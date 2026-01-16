@@ -1,8 +1,12 @@
 esphome:
-  name: test-composite-switch
+  name: test-composite-telephony
+  friendly_name: Test Composite Telephony
+  platformio_options:
+    board_build.flash_mode: dio
 
 esp32:
   board: esp32-s3-devkitc-1
+  variant: esp32s3
   framework:
     type: esp-idf
     version: recommended
@@ -20,73 +24,71 @@ external_components:
   - source:
       type: local
       path: ../components
-    components: [hid_composite]
 
 hid_composite:
   id: my_hid
 
-# Test binary sensor for connection status
 binary_sensor:
   - platform: hid_composite
+    type: connected
     name: "PC Connected"
-
-# Test switches
-switch:
-  - platform: hid_composite
-    type: mouse
-    name: "Mouse Keep Awake"
-    interval: 30s
-    jitter: 5s
+    id: pc_connected
   
   - platform: hid_composite
-    type: keyboard
-    name: "Keyboard Keep Awake"
-    key: "F15"
-    interval: 45s
-    jitter: 10s
+    type: muted
+    name: "Muted"
+    id: is_muted
   
   - platform: hid_composite
-    type: mute
-    name: "Mute"
+    type: in_call
+    name: "In Call"
+    id: is_in_call
+  
+  - platform: hid_composite
+    type: ringing
+    name: "Ringing"
+    id: is_ringing
 
-# Test actions
 button:
+  # Mouse actions
   - platform: template
     name: "Move Mouse"
     on_press:
       - hid_composite.move:
           x: 10
           y: 10
-
+  
+  # Keyboard actions
   - platform: template
     name: "Type Hello"
     on_press:
       - hid_composite.type:
           text: "Hello World!"
-          speed: 80
-          jitter: 20
-
+          speed: 100
+          jitter: 30
+  
+  # Telephony actions
   - platform: template
-    name: "Start Mouse Keep Awake"
+    name: "Toggle Mute"
     on_press:
-      - hid_composite.start_mouse_keep_awake:
-          interval: 60s
-          jitter: 10s
-
+      - hid_composite.toggle_mute:
+  
   - platform: template
-    name: "Stop Mouse Keep Awake"  
+    name: "Mute"
     on_press:
-      - hid_composite.stop_mouse_keep_awake:
-
+      - hid_composite.mute:
+  
   - platform: template
-    name: "Start Keyboard Keep Awake"
+    name: "Unmute"
     on_press:
-      - hid_composite.start_keyboard_keep_awake:
-          key: "SCROLL_LOCK"
-          interval: 60s
-          jitter: 10s
-
+      - hid_composite.unmute:
+  
   - platform: template
-    name: "Stop Keyboard Keep Awake"
+    name: "Answer Call"
     on_press:
-      - hid_composite.stop_keyboard_keep_awake:
+      - hid_composite.answer_call:
+  
+  - platform: template
+    name: "Hang Up"
+    on_press:
+      - hid_composite.hang_up:

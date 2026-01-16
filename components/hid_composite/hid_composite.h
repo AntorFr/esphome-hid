@@ -60,6 +60,33 @@ class HIDComposite : public Component {
   // Keep awake (keyboard)
   void start_keyboard_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms = 0);
   void stop_keyboard_keep_awake();
+  
+  // Connection status
+  bool is_connected();
+  bool is_ready();
+  
+  // Telephony functions
+  void mute();
+  void unmute();
+  void toggle_mute();
+  void hook_switch(bool state);
+  void answer_call();
+  void hang_up();
+  
+  // Telephony state getters
+  bool is_muted() { return this->muted_; }
+  bool is_off_hook() { return this->off_hook_; }
+  bool is_ringing() { return this->ringing_; }
+  bool is_hold() { return this->hold_; }
+  
+  // Telephony callbacks
+  void add_on_mute_callback(std::function<void(bool)> &&callback) { this->mute_callbacks_.add(std::move(callback)); }
+  void add_on_off_hook_callback(std::function<void(bool)> &&callback) { this->off_hook_callbacks_.add(std::move(callback)); }
+  void add_on_ring_callback(std::function<void(bool)> &&callback) { this->ring_callbacks_.add(std::move(callback)); }
+  void add_on_hold_callback(std::function<void(bool)> &&callback) { this->hold_callbacks_.add(std::move(callback)); }
+  
+  // Process host report (for telephony LED states)
+  void process_host_report(uint8_t const *buffer, uint16_t bufsize);
 
  protected:
   bool initialized_{false};
@@ -84,6 +111,22 @@ class HIDComposite : public Component {
   uint32_t keyboard_keep_awake_jitter_{0};
   uint32_t keyboard_keep_awake_last_time_{0};
   uint32_t keyboard_keep_awake_next_interval_{0};
+  
+  // Telephony state
+  bool muted_{false};
+  bool off_hook_{false};
+  bool ringing_{false};
+  bool hold_{false};
+  bool hook_button_{false};
+  bool mute_button_{false};
+  
+  void send_telephony_report();
+  
+  // Telephony callbacks
+  CallbackManager<void(bool)> mute_callbacks_;
+  CallbackManager<void(bool)> off_hook_callbacks_;
+  CallbackManager<void(bool)> ring_callbacks_;
+  CallbackManager<void(bool)> hold_callbacks_;
 };
 
 // ============ Mouse Action Templates ============
@@ -213,6 +256,45 @@ class StopKeyboardKeepAwakeAction : public Action<Ts...>, public Parented<HIDCom
   void play(Ts... x) override {
     this->parent_->stop_keyboard_keep_awake();
   }
+};
+
+// ============ Telephony Action Templates ============
+
+template<typename... Ts>
+class MuteAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->mute(); }
+};
+
+template<typename... Ts>
+class UnmuteAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->unmute(); }
+};
+
+template<typename... Ts>
+class ToggleMuteAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->toggle_mute(); }
+};
+
+template<typename... Ts>
+class HookSwitchAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  TEMPLATABLE_VALUE(bool, state)
+  void play(Ts... x) override { this->parent_->hook_switch(this->state_.value(x...)); }
+};
+
+template<typename... Ts>
+class AnswerCallAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->answer_call(); }
+};
+
+template<typename... Ts>
+class HangUpAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->hang_up(); }
 };
 
 }  // namespace hid_composite

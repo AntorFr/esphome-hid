@@ -25,6 +25,11 @@ external_components:
 hid_keyboard:
   id: my_keyboard
 
+# Test binary sensor for connection status
+binary_sensor:
+  - platform: hid_keyboard
+    name: "PC Connected"
+
 # Test switch
 switch:
   - platform: hid_keyboard

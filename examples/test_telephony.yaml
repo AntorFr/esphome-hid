@@ -1,0 +1,67 @@
+esphome:
+  name: test-telephony
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      CONFIG_TINYUSB_HID_COUNT: "1"
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+    components:
+      - espressif/esp_tinyusb^2.0.1
+
+logger:
+  hardware_uart: UART0
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [hid_telephony]
+
+hid_telephony:
+  id: my_telephony
+
+# Binary sensors for status
+binary_sensor:
+  - platform: hid_telephony
+    type: connected
+    name: "PC Connected"
+  
+  - platform: hid_telephony
+    type: in_call
+    name: "In Call"
+  
+  - platform: hid_telephony
+    type: ringing
+    name: "Ringing"
+
+switch:
+  - platform: hid_telephony
+    type: mute
+    name: "Mute"
+
+# Test buttons
+button:
+  - platform: template
+    name: "Toggle Mute"
+    on_press:
+      - hid_telephony.toggle_mute:
+
+  - platform: template
+    name: "Answer Call"
+    on_press:
+      - hid_telephony.answer:
+
+  - platform: template
+    name: "Hang Up"
+    on_press:
+      - hid_telephony.hang_up:
+
+  - platform: template
+    name: "Hook Switch"
+    on_press:
+      - hid_telephony.hook_switch:

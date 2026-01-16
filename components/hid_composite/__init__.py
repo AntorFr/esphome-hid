@@ -5,7 +5,7 @@ from esphome.const import CONF_ID
 
 CODEOWNERS = ["@AntorFr"]
 DEPENDENCIES = ["esp32"]
-CONFLICTS_WITH = ["hid_mouse", "hid_keyboard"]
+CONFLICTS_WITH = ["hid_mouse", "hid_keyboard", "hid_telephony"]
 
 hid_composite_ns = cg.esphome_ns.namespace("hid_composite")
 HIDComposite = hid_composite_ns.class_("HIDComposite", cg.Component)
@@ -30,6 +30,14 @@ StartMouseKeepAwakeAction = hid_composite_ns.class_("StartMouseKeepAwakeAction",
 StopMouseKeepAwakeAction = hid_composite_ns.class_("StopMouseKeepAwakeAction", automation.Action)
 StartKeyboardKeepAwakeAction = hid_composite_ns.class_("StartKeyboardKeepAwakeAction", automation.Action)
 StopKeyboardKeepAwakeAction = hid_composite_ns.class_("StopKeyboardKeepAwakeAction", automation.Action)
+
+# Telephony Actions
+MuteAction = hid_composite_ns.class_("MuteAction", automation.Action)
+UnmuteAction = hid_composite_ns.class_("UnmuteAction", automation.Action)
+ToggleMuteAction = hid_composite_ns.class_("ToggleMuteAction", automation.Action)
+HookSwitchAction = hid_composite_ns.class_("HookSwitchAction", automation.Action)
+AnswerCallAction = hid_composite_ns.class_("AnswerCallAction", automation.Action)
+HangUpAction = hid_composite_ns.class_("HangUpAction", automation.Action)
 
 CONF_X = "x"
 CONF_Y = "y"
@@ -299,6 +307,74 @@ STOP_KEYBOARD_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema({
 
 @automation.register_action("hid_composite.stop_keyboard_keep_awake", StopKeyboardKeepAwakeAction, STOP_KEYBOARD_KEEP_AWAKE_ACTION_SCHEMA)
 async def stop_keyboard_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+
+# ============ Telephony Actions ============
+
+MUTE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.mute", MuteAction, MUTE_ACTION_SCHEMA)
+async def mute_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+UNMUTE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.unmute", UnmuteAction, UNMUTE_ACTION_SCHEMA)
+async def unmute_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+TOGGLE_MUTE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.toggle_mute", ToggleMuteAction, TOGGLE_MUTE_ACTION_SCHEMA)
+async def toggle_mute_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+CONF_STATE = "state"
+
+HOOK_SWITCH_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+    cv.Required(CONF_STATE): cv.templatable(cv.boolean),
+})
+
+@automation.register_action("hid_composite.hook_switch", HookSwitchAction, HOOK_SWITCH_ACTION_SCHEMA)
+async def hook_switch_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    template_ = await cg.templatable(config[CONF_STATE], args, cg.bool_)
+    cg.add(var.set_state(template_))
+    return var
+
+ANSWER_CALL_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.answer_call", AnswerCallAction, ANSWER_CALL_ACTION_SCHEMA)
+async def answer_call_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+HANG_UP_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.hang_up", HangUpAction, HANG_UP_ACTION_SCHEMA)
+async def hang_up_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
     return var

@@ -25,6 +25,11 @@ external_components:
 hid_mouse:
   id: my_mouse
 
+# Test binary sensor for connection status
+binary_sensor:
+  - platform: hid_mouse
+    name: "PC Connected"
+
 # Test switch
 switch:
   - platform: hid_mouse

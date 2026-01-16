@@ -15,6 +15,7 @@ CONF_JITTER = "jitter"
 
 MouseKeepAwakeSwitch = hid_composite_ns.class_("MouseKeepAwakeSwitch", switch.Switch, cg.Component)
 KeyboardKeepAwakeSwitch = hid_composite_ns.class_("KeyboardKeepAwakeSwitch", switch.Switch, cg.Component)
+MuteSwitch = hid_composite_ns.class_("MuteSwitch", switch.Switch, cg.Component)
 
 MOUSE_SCHEMA = switch.switch_schema(MouseKeepAwakeSwitch).extend(
     {
@@ -33,10 +34,17 @@ KEYBOARD_SCHEMA = switch.switch_schema(KeyboardKeepAwakeSwitch).extend(
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
+MUTE_SCHEMA = switch.switch_schema(MuteSwitch).extend(
+    {
+        cv.GenerateID(CONF_HID_COMPOSITE_ID): cv.use_id(HIDComposite),
+    }
+).extend(cv.COMPONENT_SCHEMA)
+
 CONFIG_SCHEMA = cv.typed_schema(
     {
         "mouse": MOUSE_SCHEMA,
         "keyboard": KEYBOARD_SCHEMA,
+        "mute": MUTE_SCHEMA,
     },
     lower=True,
 )
@@ -48,8 +56,10 @@ async def to_code(config):
     await cg.register_component(var, config)
     
     cg.add(var.set_parent(parent))
-    cg.add(var.set_interval(config[CONF_INTERVAL]))
-    cg.add(var.set_jitter(config[CONF_JITTER]))
+    
+    if config[CONF_TYPE] in ["mouse", "keyboard"]:
+        cg.add(var.set_interval(config[CONF_INTERVAL]))
+        cg.add(var.set_jitter(config[CONF_JITTER]))
     
     if config[CONF_TYPE] == "keyboard":
         cg.add(var.set_key(config[CONF_KEY]))

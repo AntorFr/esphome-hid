@@ -292,6 +292,16 @@ void HIDKeyboard::stop_keep_awake() {
   this->keep_awake_enabled_ = false;
 }
 
+bool HIDKeyboard::is_connected() {
+  if (!this->initialized_) return false;
+  return tud_mounted();
+}
+
+bool HIDKeyboard::is_ready() {
+  if (!this->initialized_) return false;
+  return tud_mounted() && tud_hid_ready();
+}
+
 }  // namespace hid_keyboard
 }  // namespace esphome
 
@@ -313,6 +323,8 @@ uint8_t HIDKeyboard::key_name_to_keycode(const std::string &key) { return 0; }
 void HIDKeyboard::send_report(uint8_t modifier, uint8_t keycode) {}
 void HIDKeyboard::start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {}
 void HIDKeyboard::stop_keep_awake() {}
+bool HIDKeyboard::is_connected() { return false; }
+bool HIDKeyboard::is_ready() { return false; }
 }  // namespace hid_keyboard
 }  // namespace esphome
 

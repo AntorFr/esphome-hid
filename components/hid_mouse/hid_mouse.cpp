@@ -285,6 +285,16 @@ void HIDMouse::stop_keep_awake() {
   this->keep_awake_enabled_ = false;
 }
 
+bool HIDMouse::is_connected() {
+  if (!this->initialized_) return false;
+  return tud_mounted();
+}
+
+bool HIDMouse::is_ready() {
+  if (!this->initialized_) return false;
+  return tud_mounted() && tud_hid_ready();
+}
+
 }  // namespace hid_mouse
 }  // namespace esphome
 
@@ -305,6 +315,8 @@ void HIDMouse::release(MouseButton button) {}
 void HIDMouse::scroll(int8_t amount) {}
 void HIDMouse::start_keep_awake(uint32_t interval_ms, uint32_t jitter_ms) {}
 void HIDMouse::stop_keep_awake() {}
+bool HIDMouse::is_connected() { return false; }
+bool HIDMouse::is_ready() { return false; }
 }  // namespace hid_mouse
 }  // namespace esphome
 

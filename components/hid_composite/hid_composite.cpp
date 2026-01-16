@@ -15,9 +15,13 @@ namespace hid_composite {
 
 static const char *const TAG = "hid_composite";
 
+// Global instance for TinyUSB callback
+static HIDComposite *g_hid_composite_instance = nullptr;
+
 // Report IDs
-#define REPORT_ID_KEYBOARD 1
-#define REPORT_ID_MOUSE    2
+#define REPORT_ID_KEYBOARD   1
+#define REPORT_ID_MOUSE      2
+#define REPORT_ID_TELEPHONY  3
 
 // Key codes
 enum KeyCode : uint8_t {
@@ -114,6 +118,37 @@ static const uint8_t hid_report_descriptor[] = {
     0x81, 0x06,        //     Input (Data, Variable, Relative)
     0xC0,              //   End Collection
     0xC0,              // End Collection
+
+    // Telephony (Headset)
+    0x05, 0x0B,        // Usage Page (Telephony Devices)
+    0x09, 0x05,        // Usage (Headset)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, REPORT_ID_TELEPHONY, // Report ID
+    
+    // Input Report (buttons we send to host)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x09, 0x20,        //   Usage (Hook Switch)
+    0x09, 0x2F,        //   Usage (Phone Mute)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x02,        //   Report Count (2)
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x95, 0x06,        //   Report Count (6) - padding
+    0x81, 0x03,        //   Input (Constant)
+    
+    // Output Report (LEDs from host)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x09, 0x9E,        //   Usage (Mute LED)
+    0x09, 0x17,        //   Usage (Off Hook LED)
+    0x09, 0x18,        //   Usage (Ring LED)
+    0x09, 0x2A,        //   Usage (Hold LED)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x04,        //   Report Count (4)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    0x95, 0x04,        //   Report Count (4) - padding
+    0x91, 0x03,        //   Output (Constant)
+    0xC0,              // End Collection
 };
 
 static const tusb_desc_device_t device_descriptor = {
@@ -151,11 +186,19 @@ static const uint8_t configuration_descriptor[] = {
 extern "C" {
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) { return hid_report_descriptor; }
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen) { return 0; }
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize) {}
+
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize) {
+  // Host is sending us LED states (for telephony)
+  if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == REPORT_ID_TELEPHONY && g_hid_composite_instance != nullptr) {
+    g_hid_composite_instance->process_host_report(buffer, bufsize);
+  }
+}
 }
 
 void HIDComposite::setup() {
-  ESP_LOGI(TAG, "Setting up HID Composite (Mouse + Keyboard)...");
+  ESP_LOGI(TAG, "Setting up HID Composite (Mouse + Keyboard + Telephony)...");
+  
+  g_hid_composite_instance = this;
   
   tinyusb_config_t tusb_cfg = {
     .port = TINYUSB_PORT_FULL_SPEED_0,
@@ -427,6 +470,112 @@ void HIDComposite::stop_keyboard_keep_awake() {
   this->keyboard_keep_awake_enabled_ = false;
 }
 
+bool HIDComposite::is_connected() {
+  if (!this->initialized_) return false;
+  return tud_mounted();
+}
+
+bool HIDComposite::is_ready() {
+  if (!this->initialized_) return false;
+  return tud_mounted() && tud_hid_ready();
+}
+
+// ============ Telephony Functions ============
+
+void HIDComposite::mute() {
+  ESP_LOGD(TAG, "Sending mute");
+  this->mute_button_ = true;
+  this->send_telephony_report();
+  delay(50);
+  this->mute_button_ = false;
+  this->send_telephony_report();
+}
+
+void HIDComposite::unmute() {
+  ESP_LOGD(TAG, "Sending unmute");
+  this->mute_button_ = true;
+  this->send_telephony_report();
+  delay(50);
+  this->mute_button_ = false;
+  this->send_telephony_report();
+}
+
+void HIDComposite::toggle_mute() {
+  ESP_LOGD(TAG, "Toggling mute");
+  this->mute_button_ = true;
+  this->send_telephony_report();
+  delay(50);
+  this->mute_button_ = false;
+  this->send_telephony_report();
+}
+
+void HIDComposite::hook_switch(bool state) {
+  ESP_LOGD(TAG, "Hook switch: %s", state ? "ON" : "OFF");
+  this->hook_button_ = state;
+  this->send_telephony_report();
+}
+
+void HIDComposite::answer_call() {
+  ESP_LOGI(TAG, "Answering call");
+  this->hook_button_ = true;
+  this->send_telephony_report();
+}
+
+void HIDComposite::hang_up() {
+  ESP_LOGI(TAG, "Hanging up");
+  this->hook_button_ = false;
+  this->send_telephony_report();
+}
+
+void HIDComposite::send_telephony_report() {
+  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
+  
+  // Report: bit 0 = Hook Switch, bit 1 = Phone Mute
+  uint8_t report = 0;
+  if (this->hook_button_) report |= 0x01;
+  if (this->mute_button_) report |= 0x02;
+  
+  tud_hid_report(REPORT_ID_TELEPHONY, &report, sizeof(report));
+  
+  ESP_LOGD(TAG, "Sent telephony report: hook=%d, mute=%d", this->hook_button_, this->mute_button_);
+}
+
+void HIDComposite::process_host_report(uint8_t const *buffer, uint16_t bufsize) {
+  if (bufsize < 1) return;
+  
+  uint8_t leds = buffer[0];
+  
+  bool new_muted = (leds & 0x01) != 0;     // Mute LED
+  bool new_off_hook = (leds & 0x02) != 0;  // Off Hook LED
+  bool new_ringing = (leds & 0x04) != 0;   // Ring LED
+  bool new_hold = (leds & 0x08) != 0;      // Hold LED
+  
+  // Check for changes and trigger callbacks
+  if (new_muted != this->muted_) {
+    this->muted_ = new_muted;
+    ESP_LOGI(TAG, "Mute state changed: %s", new_muted ? "MUTED" : "UNMUTED");
+    this->mute_callbacks_.call(new_muted);
+  }
+  
+  if (new_off_hook != this->off_hook_) {
+    this->off_hook_ = new_off_hook;
+    ESP_LOGI(TAG, "Off-hook state changed: %s", new_off_hook ? "IN CALL" : "IDLE");
+    this->off_hook_callbacks_.call(new_off_hook);
+  }
+  
+  if (new_ringing != this->ringing_) {
+    this->ringing_ = new_ringing;
+    ESP_LOGI(TAG, "Ring state changed: %s", new_ringing ? "RINGING" : "NOT RINGING");
+    this->ring_callbacks_.call(new_ringing);
+  }
+  
+  if (new_hold != this->hold_) {
+    this->hold_ = new_hold;
+    ESP_LOGI(TAG, "Hold state changed: %s", new_hold ? "ON HOLD" : "NOT ON HOLD");
+    this->hold_callbacks_.call(new_hold);
+  }
+}
+
 }  // namespace hid_composite
 }  // namespace esphome
 
@@ -457,14 +606,16 @@ void HIDComposite::start_mouse_keep_awake(uint32_t interval_ms, uint32_t jitter_
 void HIDComposite::stop_mouse_keep_awake() {}
 void HIDComposite::start_keyboard_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {}
 void HIDComposite::stop_keyboard_keep_awake() {}
-}  // namespace hid_composite
-}  // namespace esphome
-void HIDComposite::key_tap(const std::string &key, uint8_t modifier) {}
-void HIDComposite::type(const std::string &text) {}
-void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {}
-uint8_t HIDComposite::key_name_to_keycode(const std::string &key) { return 0; }
-void HIDComposite::send_mouse_report() {}
-void HIDComposite::send_keyboard_report(uint8_t modifier, uint8_t keycode) {}
+bool HIDComposite::is_connected() { return false; }
+bool HIDComposite::is_ready() { return false; }
+void HIDComposite::mute() {}
+void HIDComposite::unmute() {}
+void HIDComposite::toggle_mute() {}
+void HIDComposite::hook_switch(bool state) {}
+void HIDComposite::answer_call() {}
+void HIDComposite::hang_up() {}
+void HIDComposite::send_telephony_report() {}
+void HIDComposite::process_host_report(uint8_t const *buffer, uint16_t bufsize) {}
 }  // namespace hid_composite
 }  // namespace esphome
 

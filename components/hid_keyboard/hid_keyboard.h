@@ -44,6 +44,10 @@ class HIDKeyboard : public Component {
   // Keep awake
   void start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms = 0);
   void stop_keep_awake();
+  
+  // Connection status
+  bool is_connected();
+  bool is_ready();
 
   bool is_initialized() const { return this->initialized_; }
 

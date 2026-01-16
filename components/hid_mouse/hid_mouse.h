@@ -36,6 +36,10 @@ class HIDMouse : public Component {
   // Keep awake
   void start_keep_awake(uint32_t interval_ms, uint32_t jitter_ms = 0);
   void stop_keep_awake();
+  
+  // Connection status
+  bool is_connected();
+  bool is_ready();
 
  protected:
   void send_report_();

@@ -43,5 +43,18 @@ class KeyboardKeepAwakeSwitch : public switch_::Switch, public Component {
   uint32_t jitter_{0};
 };
 
+class MuteSwitch : public switch_::Switch, public Component {
+ public:
+  void setup() override;
+  void dump_config() override;
+  
+  void set_parent(HIDComposite *parent) { this->parent_ = parent; }
+
+ protected:
+  void write_state(bool state) override;
+  
+  HIDComposite *parent_{nullptr};
+};
+
 }  // namespace hid_composite
 }  // namespace esphome
