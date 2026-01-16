@@ -2,10 +2,9 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation
 from esphome.const import CONF_ID
-from esphome.components.esp32 import add_idf_sdkconfig_option
 
-CODEOWNERS = ["AntorFR"]
-DEPENDENCIES = ["esp32", "tinyusb"]
+CODEOWNERS = ["@AntorFR"]
+DEPENDENCIES = ["esp32"]
 AUTO_LOAD = []
 
 CONF_HID_MOUSE_ID = "hid_mouse_id"
@@ -38,10 +37,6 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    
-    # Enable TinyUSB HID class
-    add_idf_sdkconfig_option("CONFIG_TINYUSB_HID_ENABLED", True)
-    add_idf_sdkconfig_option("CONFIG_TINYUSB_HID_COUNT", 1)
 
 
 # Action: Move

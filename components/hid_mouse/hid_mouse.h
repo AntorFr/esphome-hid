@@ -5,13 +5,9 @@
 
 #ifdef USE_ESP32
 
-#include "esp_log.h"
-
 // Check for ESP32-S2, ESP32-S3, or ESP32-P4 (chips with USB OTG)
 #if defined(USE_ESP32_VARIANT_ESP32S2) || defined(USE_ESP32_VARIANT_ESP32S3) || defined(USE_ESP32_VARIANT_ESP32P4)
 #define HID_MOUSE_SUPPORTED
-#include "tinyusb.h"
-#include "class/hid/hid_device.h"
 #endif
 
 namespace esphome {

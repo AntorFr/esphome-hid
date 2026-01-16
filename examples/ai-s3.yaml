@@ -1,9 +1,10 @@
-# Minimal test configuration - Random mouse movements
-# Flash via USB, then plug into a computer to see the mouse move
-# The mouse will start moving automatically every 2 seconds!
+# ESPHome HID Mouse - AI-Thinker ESP32-S3
+# This config makes the mouse cursor move automatically for testing
 
 esphome:
-  name: esp32-hid-test
+  name: ai-s3-mouse
+  friendly_name: "AI-S3 HID Mouse"
+
 esp32:
   board: esp32-s3-devkitc-1
   framework:
@@ -14,12 +15,12 @@ esp32:
       CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
       # Enable TinyUSB HID (REQUIRED)
       CONFIG_TINYUSB_HID_COUNT: "1"
-      # Console on UART0 for debugging (recommended)
+      # Console on UART0 for debugging (optional but recommended)
       CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
     components:
       - espressif/esp_tinyusb^2.0.1
 
-# Load external component from local path for testing
+# Load HID Mouse component
 external_components:
   - source:
       type: local
@@ -28,20 +29,20 @@ external_components:
 
 # HID Mouse
 hid_mouse:
-  id: mouse
+  id: my_mouse
 
-# Logs on UART0 (USB is used for HID)
+# Logger (USB CDC disabled to avoid conflict with HID)
 logger:
   level: DEBUG
   hardware_uart: UART0
 
-# Random mouse movement every 2 seconds - starts automatically!
+# Automatic mouse movement every 2 seconds for testing
 interval:
   - interval: 2s
     then:
       - lambda: |-
-          // Generate random movement between -20 and 20
+          // Random movement between -20 and +20 pixels
           int8_t x = (rand() % 41) - 20;
           int8_t y = (rand() % 41) - 20;
-          ESP_LOGI("test", "Moving mouse: x=%d, y=%d", x, y);
-          id(mouse).move(x, y);
+          ESP_LOGI("mouse", "Moving: x=%d, y=%d", x, y);
+          id(my_mouse).move(x, y);

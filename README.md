@@ -23,19 +23,36 @@ external_components:
     components: [hid_mouse]
 ```
 
+## Requirements
+
+- **ESP32-S3** with native USB OTG port
+- **ESP-IDF framework** (not Arduino)
+- Board with **two USB ports** recommended:
+  - **UART/CH340 port**: for flashing and serial logs
+  - **USB native/JTAG port**: for HID mouse (this is where your mouse will appear)
+
+> ⚠️ **Important**: On boards with two USB ports, the HID mouse will only work on the **USB native/JTAG port**, not the UART/CH340 port. Connect this port to the computer where you want to control the mouse.
+
 ## Configuration
 
 ```yaml
 esphome:
   name: esp32-hid-mouse
-  platformio_options:
-    board_build.flash_mode: dio
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: esp-idf
     version: recommended
+    sdkconfig_options:
+      # Disable USB-Serial/JTAG to free USB port for HID (REQUIRED)
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      # Enable TinyUSB HID (REQUIRED)
+      CONFIG_TINYUSB_HID_COUNT: "1"
+      # Console on UART0 for debugging (recommended)
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+    components:
+      - espressif/esp_tinyusb^2.0.1
 
 hid_mouse:
   id: my_mouse

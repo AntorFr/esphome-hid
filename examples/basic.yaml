@@ -4,14 +4,21 @@
 esphome:
   name: esp32-hid-mouse
   friendly_name: "ESP32 HID Mouse"
-  platformio_options:
-    board_build.flash_mode: dio
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: esp-idf
     version: recommended
+    sdkconfig_options:
+      # Disable USB-Serial/JTAG to free USB port for HID (REQUIRED)
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      # Enable TinyUSB HID (REQUIRED)
+      CONFIG_TINYUSB_HID_COUNT: "1"
+      # Console on UART0 for debugging (recommended)
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+    components:
+      - espressif/esp_tinyusb^2.0.1
 
 # Load external component
 external_components:
@@ -20,10 +27,6 @@ external_components:
       url: https://github.com/AntorFR/esphome-hid
       ref: main
     components: [hid_mouse]
-
-# TinyUSB configuration (required for HID)
-tinyusb:
-  usb_product_str: "ESPHome HID Mouse"
 
 # HID Mouse configuration
 hid_mouse:
@@ -34,9 +37,10 @@ hid_mouse:
 #   ssid: "your-ssid"
 #   password: "your-password"
 
-# Optional: Logs
+# Logs on UART0 (USB is used for HID)
 logger:
   level: DEBUG
+  hardware_uart: UART0
 
 # Example with physical buttons
 binary_sensor:
