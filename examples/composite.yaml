@@ -1,0 +1,136 @@
+esphome:
+  name: hid-composite
+  friendly_name: HID Composite
+  platformio_options:
+    build_flags:
+      - -DCFG_TUD_HID=1
+    lib_deps:
+      - "espressif/esp_tinyusb^2.0.1"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      CONFIG_TINYUSB_HID_COUNT: "1"
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "HID-Composite"
+    password: "12345678"
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/AntorFr/esphome-hid
+      ref: main
+    components: [hid_composite]
+
+hid_composite:
+  id: my_hid
+
+button:
+  # Mouse actions
+  - platform: template
+    name: "Move Mouse"
+    on_press:
+      - hid_composite.move:
+          id: my_hid
+          x: 50
+          y: 50
+
+  - platform: template
+    name: "Left Click"
+    on_press:
+      - hid_composite.click:
+          id: my_hid
+          button: LEFT
+
+  - platform: template
+    name: "Right Click"
+    on_press:
+      - hid_composite.click:
+          id: my_hid
+          button: RIGHT
+
+  - platform: template
+    name: "Scroll Up"
+    on_press:
+      - hid_composite.scroll:
+          id: my_hid
+          vertical: 5
+
+  - platform: template
+    name: "Scroll Down"
+    on_press:
+      - hid_composite.scroll:
+          id: my_hid
+          vertical: -5
+
+  # Keyboard actions
+  - platform: template
+    name: "Type Hello"
+    on_press:
+      - hid_composite.type:
+          id: my_hid
+          text: "Hello World!"
+
+  - platform: template
+    name: "Press Enter"
+    on_press:
+      - hid_composite.key_tap:
+          id: my_hid
+          key: "ENTER"
+
+  - platform: template
+    name: "Ctrl+C"
+    on_press:
+      - hid_composite.key_tap:
+          id: my_hid
+          key: "c"
+          modifiers: CTRL
+
+  - platform: template
+    name: "Ctrl+V"
+    on_press:
+      - hid_composite.key_tap:
+          id: my_hid
+          key: "v"
+          modifiers: CTRL
+
+  # Combined mouse + keyboard demo
+  - platform: template
+    name: "Demo: Select All and Copy"
+    on_press:
+      # Triple click to select line
+      - hid_composite.click:
+          id: my_hid
+          button: LEFT
+      - delay: 50ms
+      - hid_composite.click:
+          id: my_hid
+          button: LEFT
+      - delay: 50ms
+      - hid_composite.click:
+          id: my_hid
+          button: LEFT
+      - delay: 100ms
+      # Ctrl+C to copy
+      - hid_composite.key_tap:
+          id: my_hid
+          key: "c"
+          modifiers: CTRL

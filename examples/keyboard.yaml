@@ -1,0 +1,118 @@
+esphome:
+  name: hid-keyboard
+  friendly_name: HID Keyboard
+  platformio_options:
+    build_flags:
+      - -DCFG_TUD_HID=1
+    lib_deps:
+      - "espressif/esp_tinyusb^2.0.1"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      CONFIG_TINYUSB_HID_COUNT: "1"
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "HID-Keyboard"
+    password: "12345678"
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/AntorFr/esphome-hid
+      ref: main
+    components: [hid_keyboard]
+
+hid_keyboard:
+  id: my_keyboard
+
+button:
+  - platform: template
+    name: "Type Hello"
+    on_press:
+      - hid_keyboard.type:
+          id: my_keyboard
+          text: "Hello World!"
+
+  - platform: template
+    name: "Press Enter"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "ENTER"
+
+  - platform: template
+    name: "Ctrl+Alt+Delete"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "DELETE"
+          modifiers: CTRL_ALT
+
+  - platform: template
+    name: "Win+R"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "r"
+          modifiers: GUI
+
+  - platform: template
+    name: "Ctrl+C"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "c"
+          modifiers: CTRL
+
+  - platform: template
+    name: "Ctrl+V"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "v"
+          modifiers: CTRL
+
+  - platform: template
+    name: "Alt+Tab"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "TAB"
+          modifiers: ALT
+
+  - platform: template
+    name: "Arrow Keys Test"
+    on_press:
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "UP"
+      - delay: 100ms
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "DOWN"
+      - delay: 100ms
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "LEFT"
+      - delay: 100ms
+      - hid_keyboard.tap:
+          id: my_keyboard
+          key: "RIGHT"
