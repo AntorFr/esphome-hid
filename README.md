@@ -1,24 +1,24 @@
 # ESPHome HID Mouse Component
 
-Composant externe ESPHome permettant de simuler une souris USB HID sur ESP32-S3.
+An ESPHome external component to simulate a USB HID mouse on ESP32-S3.
 
-## Fonctionnalités
+## Features
 
-- Simulation complète d'une souris USB HID
-- Mouvements relatifs (X, Y)
-- Boutons gauche, droit et milieu
-- Molette de défilement
-- Compatible ESP32-S3 avec USB OTG natif
+- Full USB HID mouse simulation
+- Relative movements (X, Y)
+- Left, right, and middle buttons
+- Scroll wheel
+- Compatible with ESP32-S3 native USB OTG
 
 ## Installation
 
-Ajoutez le composant externe dans votre configuration ESPHome :
+Add the external component to your ESPHome configuration:
 
 ```yaml
 external_components:
   - source:
       type: git
-      url: https://github.com/votre-username/esphome-hid
+      url: https://github.com/AntorFR/esphome-hid
       ref: main
     components: [hid_mouse]
 ```
@@ -40,7 +40,7 @@ esp32:
 hid_mouse:
   id: my_mouse
 
-# Exemple d'utilisation avec un bouton
+# Example usage with a button
 binary_sensor:
   - platform: gpio
     pin: GPIO0
@@ -51,10 +51,10 @@ binary_sensor:
           button: LEFT
 ```
 
-## Actions disponibles
+## Available Actions
 
 ### `hid_mouse.move`
-Déplace le curseur de manière relative.
+Moves the cursor relatively.
 
 ```yaml
 - hid_mouse.move:
@@ -64,7 +64,7 @@ Déplace le curseur de manière relative.
 ```
 
 ### `hid_mouse.click`
-Effectue un clic avec le bouton spécifié.
+Performs a click with the specified button.
 
 ```yaml
 - hid_mouse.click:
@@ -73,7 +73,7 @@ Effectue un clic avec le bouton spécifié.
 ```
 
 ### `hid_mouse.press`
-Appuie sur un bouton (sans relâcher).
+Presses a button (without releasing).
 
 ```yaml
 - hid_mouse.press:
@@ -82,7 +82,7 @@ Appuie sur un bouton (sans relâcher).
 ```
 
 ### `hid_mouse.release`
-Relâche un bouton.
+Releases a button.
 
 ```yaml
 - hid_mouse.release:
@@ -91,20 +91,20 @@ Relâche un bouton.
 ```
 
 ### `hid_mouse.scroll`
-Fait défiler la molette.
+Scrolls the wheel.
 
 ```yaml
 - hid_mouse.scroll:
     id: my_mouse
-    amount: 1  # positif = haut, négatif = bas
+    amount: 1  # positive = up, negative = down
 ```
 
-## Prérequis
+## Requirements
 
-- ESP32-S3 avec support USB OTG natif
-- ESPHome 2023.12.0 ou plus récent
-- Framework ESP-IDF
+- ESP32-S3 with native USB OTG support
+- ESPHome 2023.12.0 or newer
+- ESP-IDF framework
 
-## Licence
+## License
 
-MIT License - voir [LICENSE](LICENSE)
+MIT License - see [LICENSE](LICENSE)

@@ -1,0 +1,40 @@
+# Minimal test configuration - Random mouse movements
+# Flash via USB, then plug into a computer to see the mouse move
+# The mouse will start moving automatically every 2 seconds!
+
+esphome:
+  name: esp32-hid-test
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+
+# Load external component from local path for testing
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [hid_mouse]
+
+# TinyUSB configuration
+tinyusb:
+
+# HID Mouse
+hid_mouse:
+  id: mouse
+
+# Logs (output via USB CDC)
+logger:
+  level: DEBUG
+
+# Random mouse movement every 2 seconds - starts automatically!
+interval:
+  - interval: 2s
+    then:
+      - lambda: |-
+          // Generate random movement between -20 and 20
+          int8_t x = (rand() % 41) - 20;
+          int8_t y = (rand() % 41) - 20;
+          ESP_LOGI("test", "Moving mouse: x=%d, y=%d", x, y);
+          id(mouse).move(x, y);

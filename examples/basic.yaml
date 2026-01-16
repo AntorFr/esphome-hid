@@ -1,5 +1,5 @@
-# Exemple de configuration ESPHome pour HID Mouse
-# Compatible ESP32-S3 avec USB OTG natif
+# ESPHome configuration example for HID Mouse
+# Compatible with ESP32-S3 native USB OTG
 
 esphome:
   name: esp32-hid-mouse
@@ -13,32 +13,34 @@ esp32:
     type: esp-idf
     version: recommended
 
-# Chargement du composant externe
+# Load external component
 external_components:
   - source:
-      type: local
-      path: ../components
+      type: git
+      url: https://github.com/AntorFR/esphome-hid
+      ref: main
+    components: [hid_mouse]
 
-# Configuration TinyUSB (requis pour HID)
+# TinyUSB configuration (required for HID)
 tinyusb:
   usb_product_str: "ESPHome HID Mouse"
 
-# Configuration de la souris HID
+# HID Mouse configuration
 hid_mouse:
   id: my_mouse
 
-# Optionnel: WiFi pour le debug
+# Optional: WiFi for debugging
 # wifi:
 #   ssid: "your-ssid"
 #   password: "your-password"
 
-# Optionnel: Logs
+# Optional: Logs
 logger:
   level: DEBUG
 
-# Exemple avec des boutons physiques
+# Example with physical buttons
 binary_sensor:
-  # Bouton pour clic gauche
+  # Button for left click
   - platform: gpio
     pin:
       number: GPIO0
@@ -50,7 +52,7 @@ binary_sensor:
           id: my_mouse
           button: LEFT
 
-  # Bouton pour clic droit
+  # Button for right click
   - platform: gpio
     pin:
       number: GPIO1
@@ -62,7 +64,7 @@ binary_sensor:
           id: my_mouse
           button: RIGHT
 
-# Exemple avec un joystick analogique
+# Example with an analog joystick
 # sensor:
 #   - platform: adc
 #     pin: GPIO4
@@ -81,12 +83,12 @@ binary_sensor:
 #               id(my_mouse).move(x / 10, 0);
 #             }
 
-# Intervalle pour mouvements continus
+# Interval for continuous movements
 interval:
   - interval: 100ms
     then:
       - lambda: |-
-          // Exemple: mouvement circulaire automatique
+          // Example: automatic circular movement
           // static float angle = 0;
           // angle += 0.1;
           // int8_t x = (int8_t)(cos(angle) * 5);

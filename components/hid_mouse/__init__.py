@@ -4,7 +4,7 @@ from esphome import automation
 from esphome.const import CONF_ID
 from esphome.components.esp32 import add_idf_sdkconfig_option
 
-CODEOWNERS = ["@votre-username"]
+CODEOWNERS = ["AntorFR"]
 DEPENDENCIES = ["esp32", "tinyusb"]
 AUTO_LOAD = []
 
