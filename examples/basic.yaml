@@ -1,0 +1,94 @@
+# Exemple de configuration ESPHome pour HID Mouse
+# Compatible ESP32-S3 avec USB OTG natif
+
+esphome:
+  name: esp32-hid-mouse
+  friendly_name: "ESP32 HID Mouse"
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+
+# Chargement du composant externe
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+# Configuration TinyUSB (requis pour HID)
+tinyusb:
+  usb_product_str: "ESPHome HID Mouse"
+
+# Configuration de la souris HID
+hid_mouse:
+  id: my_mouse
+
+# Optionnel: WiFi pour le debug
+# wifi:
+#   ssid: "your-ssid"
+#   password: "your-password"
+
+# Optionnel: Logs
+logger:
+  level: DEBUG
+
+# Exemple avec des boutons physiques
+binary_sensor:
+  # Bouton pour clic gauche
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Left Click"
+    on_press:
+      - hid_mouse.click:
+          id: my_mouse
+          button: LEFT
+
+  # Bouton pour clic droit
+  - platform: gpio
+    pin:
+      number: GPIO1
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Right Click"
+    on_press:
+      - hid_mouse.click:
+          id: my_mouse
+          button: RIGHT
+
+# Exemple avec un joystick analogique
+# sensor:
+#   - platform: adc
+#     pin: GPIO4
+#     name: "Joystick X"
+#     update_interval: 50ms
+#     filters:
+#       - calibrate_linear:
+#           - 0.0 -> -127
+#           - 1.65 -> 0
+#           - 3.3 -> 127
+#     on_value:
+#       then:
+#         - lambda: |-
+#             int8_t x = (int8_t) x;
+#             if (abs(x) > 5) {  // Dead zone
+#               id(my_mouse).move(x / 10, 0);
+#             }
+
+# Intervalle pour mouvements continus
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          // Exemple: mouvement circulaire automatique
+          // static float angle = 0;
+          // angle += 0.1;
+          // int8_t x = (int8_t)(cos(angle) * 5);
+          // int8_t y = (int8_t)(sin(angle) * 5);
+          // id(my_mouse).move(x, y);
