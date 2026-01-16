@@ -51,7 +51,15 @@ class HIDComposite : public Component {
   void key_release();
   void key_release_all();
   void key_tap(const std::string &key, uint8_t modifier = 0);
-  void type(const std::string &text);
+  void type(const std::string &text, uint32_t speed_ms = 50, uint32_t jitter_ms = 0);
+  
+  // Keep awake (mouse)
+  void start_mouse_keep_awake(uint32_t interval_ms, uint32_t jitter_ms = 0);
+  void stop_mouse_keep_awake();
+  
+  // Keep awake (keyboard)
+  void start_keyboard_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms = 0);
+  void stop_keyboard_keep_awake();
 
  protected:
   bool initialized_{false};
@@ -61,6 +69,21 @@ class HIDComposite : public Component {
   void send_keyboard_report(uint8_t modifier, uint8_t keycode);
   void char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier);
   uint8_t key_name_to_keycode(const std::string &key);
+  
+  // Mouse keep awake state
+  bool mouse_keep_awake_enabled_{false};
+  uint32_t mouse_keep_awake_interval_{60000};
+  uint32_t mouse_keep_awake_jitter_{0};
+  uint32_t mouse_keep_awake_last_time_{0};
+  uint32_t mouse_keep_awake_next_interval_{0};
+  
+  // Keyboard keep awake state
+  bool keyboard_keep_awake_enabled_{false};
+  std::string keyboard_keep_awake_key_;
+  uint32_t keyboard_keep_awake_interval_{60000};
+  uint32_t keyboard_keep_awake_jitter_{0};
+  uint32_t keyboard_keep_awake_last_time_{0};
+  uint32_t keyboard_keep_awake_next_interval_{0};
 };
 
 // ============ Mouse Action Templates ============
@@ -146,7 +169,50 @@ template<typename... Ts>
 class TypeAction : public Action<Ts...>, public Parented<HIDComposite> {
  public:
   TEMPLATABLE_VALUE(std::string, text)
-  void play(Ts... x) override { this->parent_->type(this->text_.value(x...)); }
+  TEMPLATABLE_VALUE(uint32_t, speed)
+  TEMPLATABLE_VALUE(uint32_t, jitter)
+  void play(Ts... x) override {
+    this->parent_->type(this->text_.value(x...), this->speed_.value(x...), this->jitter_.value(x...));
+  }
+};
+
+// ============ Keep Awake Action Templates ============
+
+template<typename... Ts>
+class StartMouseKeepAwakeAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  TEMPLATABLE_VALUE(uint32_t, interval)
+  TEMPLATABLE_VALUE(uint32_t, jitter)
+  void play(Ts... x) override {
+    this->parent_->start_mouse_keep_awake(this->interval_.value(x...), this->jitter_.value(x...));
+  }
+};
+
+template<typename... Ts>
+class StopMouseKeepAwakeAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->stop_mouse_keep_awake();
+  }
+};
+
+template<typename... Ts>
+class StartKeyboardKeepAwakeAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  TEMPLATABLE_VALUE(std::string, key)
+  TEMPLATABLE_VALUE(uint32_t, interval)
+  TEMPLATABLE_VALUE(uint32_t, jitter)
+  void play(Ts... x) override {
+    this->parent_->start_keyboard_keep_awake(this->key_.value(x...), this->interval_.value(x...), this->jitter_.value(x...));
+  }
+};
+
+template<typename... Ts>
+class StopKeyboardKeepAwakeAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->stop_keyboard_keep_awake();
+  }
 };
 
 }  // namespace hid_composite

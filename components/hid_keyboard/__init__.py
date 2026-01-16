@@ -18,6 +18,8 @@ ReleaseAction = hid_keyboard_ns.class_("ReleaseAction", automation.Action)
 TapAction = hid_keyboard_ns.class_("TapAction", automation.Action)
 TypeAction = hid_keyboard_ns.class_("TypeAction", automation.Action)
 ReleaseAllAction = hid_keyboard_ns.class_("ReleaseAllAction", automation.Action)
+StartKeepAwakeAction = hid_keyboard_ns.class_("StartKeepAwakeAction", automation.Action)
+StopKeepAwakeAction = hid_keyboard_ns.class_("StopKeepAwakeAction", automation.Action)
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -34,6 +36,7 @@ async def to_code(config):
 CONF_KEY = "key"
 CONF_TEXT = "text"
 CONF_MODIFIER = "modifier"
+CONF_INTERVAL = "interval"
 
 MODIFIERS = {
     "NONE": 0x00,
@@ -124,6 +127,9 @@ async def release_all_action_to_code(config, action_id, template_arg, args):
     return var
 
 
+CONF_SPEED = "speed"
+CONF_JITTER = "jitter"
+
 @automation.register_action(
     "hid_keyboard.type",
     TypeAction,
@@ -131,6 +137,8 @@ async def release_all_action_to_code(config, action_id, template_arg, args):
         {
             cv.GenerateID(): cv.use_id(HIDKeyboard),
             cv.Required(CONF_TEXT): cv.templatable(cv.string),
+            cv.Optional(CONF_SPEED, default=50): cv.templatable(cv.positive_int),
+            cv.Optional(CONF_JITTER, default=0): cv.templatable(cv.positive_int),
         }
     ),
 )
@@ -139,4 +147,49 @@ async def type_action_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     template_ = await cg.templatable(config[CONF_TEXT], args, cg.std_string)
     cg.add(var.set_text(template_))
+    speed = await cg.templatable(config[CONF_SPEED], args, cg.uint32)
+    cg.add(var.set_speed(speed))
+    jitter = await cg.templatable(config[CONF_JITTER], args, cg.uint32)
+    cg.add(var.set_jitter(jitter))
+    return var
+
+
+# Action: Start Keep Awake
+@automation.register_action(
+    "hid_keyboard.start_keep_awake",
+    StartKeepAwakeAction,
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(HIDKeyboard),
+            cv.Required(CONF_KEY): cv.templatable(cv.string),
+            cv.Optional(CONF_INTERVAL, default="60s"): cv.templatable(cv.positive_time_period_milliseconds),
+            cv.Optional(CONF_JITTER, default="0s"): cv.templatable(cv.positive_time_period_milliseconds),
+        }
+    ),
+)
+async def start_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    template_ = await cg.templatable(config[CONF_KEY], args, cg.std_string)
+    cg.add(var.set_key(template_))
+    template_ = await cg.templatable(config[CONF_INTERVAL], args, cg.uint32)
+    cg.add(var.set_interval(template_))
+    template_ = await cg.templatable(config[CONF_JITTER], args, cg.uint32)
+    cg.add(var.set_jitter(template_))
+    return var
+
+
+# Action: Stop Keep Awake
+@automation.register_action(
+    "hid_keyboard.stop_keep_awake",
+    StopKeepAwakeAction,
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(HIDKeyboard),
+        }
+    ),
+)
+async def stop_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var

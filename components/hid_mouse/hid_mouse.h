@@ -32,6 +32,10 @@ class HIDMouse : public Component {
   void press(MouseButton button);
   void release(MouseButton button);
   void scroll(int8_t amount);
+  
+  // Keep awake
+  void start_keep_awake(uint32_t interval_ms, uint32_t jitter_ms = 0);
+  void stop_keep_awake();
 
  protected:
   void send_report_();
@@ -42,6 +46,13 @@ class HIDMouse : public Component {
   int8_t wheel_{0};
   bool report_pending_{false};
   bool initialized_{false};
+  
+  // Keep awake state
+  bool keep_awake_enabled_{false};
+  uint32_t keep_awake_interval_{60000};
+  uint32_t keep_awake_jitter_{0};
+  uint32_t keep_awake_last_time_{0};
+  uint32_t keep_awake_next_interval_{0};
 };
 
 // Action: Move
@@ -101,6 +112,25 @@ template<typename... Ts> class ScrollAction : public Action<Ts...>, public Paren
 
   void play(Ts... x) override {
     this->parent_->scroll(this->amount_.value(x...));
+  }
+};
+
+// Action: Start Keep Awake
+template<typename... Ts> class StartKeepAwakeAction : public Action<Ts...>, public Parented<HIDMouse> {
+ public:
+  TEMPLATABLE_VALUE(uint32_t, interval)
+  TEMPLATABLE_VALUE(uint32_t, jitter)
+
+  void play(Ts... x) override {
+    this->parent_->start_keep_awake(this->interval_.value(x...), this->jitter_.value(x...));
+  }
+};
+
+// Action: Stop Keep Awake
+template<typename... Ts> class StopKeepAwakeAction : public Action<Ts...>, public Parented<HIDMouse> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->stop_keep_awake();
   }
 };
 

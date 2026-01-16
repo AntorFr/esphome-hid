@@ -186,15 +186,22 @@ void HIDKeyboard::tap(const std::string &key, uint8_t modifier) {
   this->release();
 }
 
-void HIDKeyboard::type(const std::string &text) {
-  ESP_LOGI(TAG, "Type: %s", text.c_str());
+void HIDKeyboard::type(const std::string &text, uint32_t speed_ms, uint32_t jitter_ms) {
+  ESP_LOGI(TAG, "Type: %s (speed=%dms, jitter=%dms)", text.c_str(), speed_ms, jitter_ms);
   for (char c : text) {
     uint8_t keycode, mod;
     this->char_to_keycode(c, keycode, mod);
     this->send_report(mod, keycode);
     delay(10);
     this->send_report(0, 0);
-    delay(10);
+    
+    // Calculate delay with jitter
+    uint32_t delay_ms = speed_ms;
+    if (jitter_ms > 0) {
+      int32_t jitter = (rand() % (jitter_ms * 2 + 1)) - jitter_ms;
+      delay_ms = (int32_t)speed_ms + jitter > 10 ? speed_ms + jitter : 10;
+    }
+    delay(delay_ms);
   }
 }
 
@@ -270,6 +277,21 @@ uint8_t HIDKeyboard::key_name_to_keycode(const std::string &key) {
   return KEY_NONE;
 }
 
+void HIDKeyboard::start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {
+  ESP_LOGI(TAG, "Starting keep awake: key=%s, interval=%dms, jitter=%dms", key.c_str(), interval_ms, jitter_ms);
+  this->keep_awake_key_ = key;
+  this->keep_awake_interval_ = interval_ms;
+  this->keep_awake_jitter_ = jitter_ms;
+  this->keep_awake_last_time_ = millis();
+  this->keep_awake_next_interval_ = interval_ms;
+  this->keep_awake_enabled_ = true;
+}
+
+void HIDKeyboard::stop_keep_awake() {
+  ESP_LOGI(TAG, "Stopping keep awake");
+  this->keep_awake_enabled_ = false;
+}
+
 }  // namespace hid_keyboard
 }  // namespace esphome
 
@@ -285,10 +307,12 @@ void HIDKeyboard::press(const std::string &key, uint8_t modifier) {}
 void HIDKeyboard::release() {}
 void HIDKeyboard::release_all() {}
 void HIDKeyboard::tap(const std::string &key, uint8_t modifier) {}
-void HIDKeyboard::type(const std::string &text) {}
+void HIDKeyboard::type(const std::string &text, uint32_t speed_ms, uint32_t jitter_ms) {}
 void HIDKeyboard::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {}
 uint8_t HIDKeyboard::key_name_to_keycode(const std::string &key) { return 0; }
 void HIDKeyboard::send_report(uint8_t modifier, uint8_t keycode) {}
+void HIDKeyboard::start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {}
+void HIDKeyboard::stop_keep_awake() {}
 }  // namespace hid_keyboard
 }  // namespace esphome
 

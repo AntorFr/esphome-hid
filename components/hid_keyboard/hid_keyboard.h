@@ -39,7 +39,11 @@ class HIDKeyboard : public Component {
   void release();
   void release_all();
   void tap(const std::string &key, uint8_t modifier = MOD_NONE);
-  void type(const std::string &text);
+  void type(const std::string &text, uint32_t speed_ms = 50, uint32_t jitter_ms = 0);
+  
+  // Keep awake
+  void start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms = 0);
+  void stop_keep_awake();
 
   bool is_initialized() const { return this->initialized_; }
 
@@ -48,6 +52,14 @@ class HIDKeyboard : public Component {
   void char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier);
   uint8_t key_name_to_keycode(const std::string &key);
   void send_report(uint8_t modifier, uint8_t keycode);
+  
+  // Keep awake state
+  bool keep_awake_enabled_{false};
+  std::string keep_awake_key_;
+  uint32_t keep_awake_interval_{60000};
+  uint32_t keep_awake_jitter_{0};
+  uint32_t keep_awake_last_time_{0};
+  uint32_t keep_awake_next_interval_{0};
 };
 
 template<typename... Ts>
@@ -86,7 +98,30 @@ template<typename... Ts>
 class TypeAction : public Action<Ts...>, public Parented<HIDKeyboard> {
  public:
   TEMPLATABLE_VALUE(std::string, text)
-  void play(Ts... x) override { this->parent_->type(this->text_.value(x...)); }
+  TEMPLATABLE_VALUE(uint32_t, speed)
+  TEMPLATABLE_VALUE(uint32_t, jitter)
+  void play(Ts... x) override {
+    this->parent_->type(this->text_.value(x...), this->speed_.value(x...), this->jitter_.value(x...));
+  }
+};
+
+template<typename... Ts>
+class StartKeepAwakeAction : public Action<Ts...>, public Parented<HIDKeyboard> {
+ public:
+  TEMPLATABLE_VALUE(std::string, key)
+  TEMPLATABLE_VALUE(uint32_t, interval)
+  TEMPLATABLE_VALUE(uint32_t, jitter)
+  void play(Ts... x) override {
+    this->parent_->start_keep_awake(this->key_.value(x...), this->interval_.value(x...), this->jitter_.value(x...));
+  }
+};
+
+template<typename... Ts>
+class StopKeepAwakeAction : public Action<Ts...>, public Parented<HIDKeyboard> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->stop_keep_awake();
+  }
 };
 
 }  // namespace hid_keyboard

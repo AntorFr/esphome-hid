@@ -1,0 +1,47 @@
+esphome:
+  name: test-mouse-switch
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      CONFIG_TINYUSB_HID_COUNT: "1"
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+    components:
+      - espressif/esp_tinyusb^2.0.1
+
+logger:
+  hardware_uart: UART0
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [hid_mouse]
+
+hid_mouse:
+  id: my_mouse
+
+# Test switch
+switch:
+  - platform: hid_mouse
+    name: "Keep Awake"
+    interval: 30s
+    jitter: 5s
+
+# Test actions
+button:
+  - platform: template
+    name: "Start Keep Awake"
+    on_press:
+      - hid_mouse.start_keep_awake:
+          interval: 60s
+          jitter: 10s
+  
+  - platform: template
+    name: "Stop Keep Awake"
+    on_press:
+      - hid_mouse.stop_keep_awake:

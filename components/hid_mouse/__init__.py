@@ -8,6 +8,8 @@ DEPENDENCIES = ["esp32"]
 AUTO_LOAD = []
 
 CONF_HID_MOUSE_ID = "hid_mouse_id"
+CONF_INTERVAL = "interval"
+CONF_JITTER = "jitter"
 
 hid_mouse_ns = cg.esphome_ns.namespace("hid_mouse")
 HIDMouse = hid_mouse_ns.class_("HIDMouse", cg.Component)
@@ -18,6 +20,8 @@ ClickAction = hid_mouse_ns.class_("ClickAction", automation.Action)
 PressAction = hid_mouse_ns.class_("PressAction", automation.Action)
 ReleaseAction = hid_mouse_ns.class_("ReleaseAction", automation.Action)
 ScrollAction = hid_mouse_ns.class_("ScrollAction", automation.Action)
+StartKeepAwakeAction = hid_mouse_ns.class_("StartKeepAwakeAction", automation.Action)
+StopKeepAwakeAction = hid_mouse_ns.class_("StopKeepAwakeAction", automation.Action)
 
 # Button enum
 MouseButton = hid_mouse_ns.enum("MouseButton")
@@ -131,4 +135,43 @@ async def hid_mouse_scroll_to_code(config, action_id, template_arg, args):
     template_ = await cg.templatable(config["amount"], args, cg.int_)
     cg.add(var.set_amount(template_))
     
+    return var
+
+
+# Action: Start Keep Awake
+START_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.use_id(HIDMouse),
+        cv.Optional(CONF_INTERVAL, default="60s"): cv.templatable(cv.positive_time_period_milliseconds),
+        cv.Optional(CONF_JITTER, default="0s"): cv.templatable(cv.positive_time_period_milliseconds),
+    }
+)
+
+
+@automation.register_action("hid_mouse.start_keep_awake", StartKeepAwakeAction, START_KEEP_AWAKE_ACTION_SCHEMA)
+async def hid_mouse_start_keep_awake_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    
+    template_ = await cg.templatable(config[CONF_INTERVAL], args, cg.uint32)
+    cg.add(var.set_interval(template_))
+    
+    template_ = await cg.templatable(config[CONF_JITTER], args, cg.uint32)
+    cg.add(var.set_jitter(template_))
+    
+    return var
+
+
+# Action: Stop Keep Awake
+STOP_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.use_id(HIDMouse),
+    }
+)
+
+
+@automation.register_action("hid_mouse.stop_keep_awake", StopKeepAwakeAction, STOP_KEEP_AWAKE_ACTION_SCHEMA)
+async def hid_mouse_stop_keep_awake_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var

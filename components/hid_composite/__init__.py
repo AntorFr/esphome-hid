@@ -25,6 +25,12 @@ KeyTapAction = hid_composite_ns.class_("KeyTapAction", automation.Action)
 KeyReleaseAllAction = hid_composite_ns.class_("KeyReleaseAllAction", automation.Action)
 TypeAction = hid_composite_ns.class_("TypeAction", automation.Action)
 
+# Keep Awake Actions
+StartMouseKeepAwakeAction = hid_composite_ns.class_("StartMouseKeepAwakeAction", automation.Action)
+StopMouseKeepAwakeAction = hid_composite_ns.class_("StopMouseKeepAwakeAction", automation.Action)
+StartKeyboardKeepAwakeAction = hid_composite_ns.class_("StartKeyboardKeepAwakeAction", automation.Action)
+StopKeyboardKeepAwakeAction = hid_composite_ns.class_("StopKeyboardKeepAwakeAction", automation.Action)
+
 CONF_X = "x"
 CONF_Y = "y"
 CONF_VERTICAL = "vertical"
@@ -33,6 +39,7 @@ CONF_BUTTON = "button"
 CONF_KEY = "key"
 CONF_MODIFIERS = "modifiers"
 CONF_TEXT = "text"
+CONF_INTERVAL = "interval"
 
 MOUSE_BUTTONS = {
     "LEFT": 0,
@@ -93,9 +100,9 @@ MOVE_ACTION_SCHEMA = cv.Schema({
 async def move_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
-    template_ = await cg.templatable(config[CONF_X], args, cg.int8)
+    template_ = await cg.templatable(config[CONF_X], args, cg.int_)
     cg.add(var.set_x(template_))
-    template_ = await cg.templatable(config[CONF_Y], args, cg.int8)
+    template_ = await cg.templatable(config[CONF_Y], args, cg.int_)
     cg.add(var.set_y(template_))
     return var
 
@@ -109,9 +116,9 @@ SCROLL_ACTION_SCHEMA = cv.Schema({
 async def scroll_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
-    template_ = await cg.templatable(config[CONF_VERTICAL], args, cg.int8)
+    template_ = await cg.templatable(config[CONF_VERTICAL], args, cg.int_)
     cg.add(var.set_vertical(template_))
-    template_ = await cg.templatable(config[CONF_HORIZONTAL], args, cg.int8)
+    template_ = await cg.templatable(config[CONF_HORIZONTAL], args, cg.int_)
     cg.add(var.set_horizontal(template_))
     return var
 
@@ -216,9 +223,14 @@ async def key_release_all_action_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     return var
 
+CONF_SPEED = "speed"
+CONF_JITTER = "jitter"
+
 TYPE_ACTION_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.use_id(HIDComposite),
     cv.Required(CONF_TEXT): cv.templatable(cv.string),
+    cv.Optional(CONF_SPEED, default=50): cv.templatable(cv.positive_int),
+    cv.Optional(CONF_JITTER, default=0): cv.templatable(cv.positive_int),
 })
 
 @automation.register_action("hid_composite.type", TypeAction, TYPE_ACTION_SCHEMA)
@@ -227,4 +239,66 @@ async def type_action_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     template_ = await cg.templatable(config[CONF_TEXT], args, cg.std_string)
     cg.add(var.set_text(template_))
+    speed = await cg.templatable(config[CONF_SPEED], args, cg.uint32)
+    cg.add(var.set_speed(speed))
+    jitter = await cg.templatable(config[CONF_JITTER], args, cg.uint32)
+    cg.add(var.set_jitter(jitter))
+    return var
+
+
+# ============ Keep Awake Actions ============
+
+START_MOUSE_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+    cv.Optional(CONF_INTERVAL, default="60s"): cv.templatable(cv.positive_time_period_milliseconds),
+    cv.Optional(CONF_JITTER, default="0s"): cv.templatable(cv.positive_time_period_milliseconds),
+})
+
+@automation.register_action("hid_composite.start_mouse_keep_awake", StartMouseKeepAwakeAction, START_MOUSE_KEEP_AWAKE_ACTION_SCHEMA)
+async def start_mouse_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    template_ = await cg.templatable(config[CONF_INTERVAL], args, cg.uint32)
+    cg.add(var.set_interval(template_))
+    template_ = await cg.templatable(config[CONF_JITTER], args, cg.uint32)
+    cg.add(var.set_jitter(template_))
+    return var
+
+STOP_MOUSE_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.stop_mouse_keep_awake", StopMouseKeepAwakeAction, STOP_MOUSE_KEEP_AWAKE_ACTION_SCHEMA)
+async def stop_mouse_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+START_KEYBOARD_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+    cv.Required(CONF_KEY): cv.templatable(cv.string),
+    cv.Optional(CONF_INTERVAL, default="60s"): cv.templatable(cv.positive_time_period_milliseconds),
+    cv.Optional(CONF_JITTER, default="0s"): cv.templatable(cv.positive_time_period_milliseconds),
+})
+
+@automation.register_action("hid_composite.start_keyboard_keep_awake", StartKeyboardKeepAwakeAction, START_KEYBOARD_KEEP_AWAKE_ACTION_SCHEMA)
+async def start_keyboard_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    template_ = await cg.templatable(config[CONF_KEY], args, cg.std_string)
+    cg.add(var.set_key(template_))
+    template_ = await cg.templatable(config[CONF_INTERVAL], args, cg.uint32)
+    cg.add(var.set_interval(template_))
+    template_ = await cg.templatable(config[CONF_JITTER], args, cg.uint32)
+    cg.add(var.set_jitter(template_))
+    return var
+
+STOP_KEYBOARD_KEEP_AWAKE_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.stop_keyboard_keep_awake", StopKeyboardKeepAwakeAction, STOP_KEYBOARD_KEEP_AWAKE_ACTION_SCHEMA)
+async def stop_keyboard_keep_awake_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var

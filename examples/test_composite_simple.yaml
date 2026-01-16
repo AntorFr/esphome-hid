@@ -1,0 +1,42 @@
+esphome:
+  name: test-composite-simple
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
+      CONFIG_TINYUSB_HID_COUNT: "2"
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
+    components:
+      - espressif/esp_tinyusb^2.0.1
+
+logger:
+  hardware_uart: UART0
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [hid_composite]
+
+hid_composite:
+  id: my_hid
+
+# Test actions
+button:
+  - platform: template
+    name: "Move Mouse"
+    on_press:
+      - hid_composite.move:
+          x: 10
+          y: -5
+
+  - platform: template
+    name: "Type Hello"
+    on_press:
+      - hid_composite.type:
+          text: "Hello!"
+          speed: 50

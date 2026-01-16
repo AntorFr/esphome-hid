@@ -182,7 +182,46 @@ void HIDComposite::setup() {
   this->initialized_ = true;
 }
 
-void HIDComposite::loop() {}
+void HIDComposite::loop() {
+  if (!this->initialized_) return;
+  
+  uint32_t now = millis();
+  
+  // Handle mouse keep awake
+  if (this->mouse_keep_awake_enabled_) {
+    if (now - this->mouse_keep_awake_last_time_ >= this->mouse_keep_awake_next_interval_) {
+      int8_t dx = (rand() % 3) - 1;
+      int8_t dy = (rand() % 3) - 1;
+      if (dx == 0 && dy == 0) dx = 1;
+      this->move(dx, dy);
+      ESP_LOGD(TAG, "Mouse keep awake: move(%d, %d)", dx, dy);
+      
+      this->mouse_keep_awake_next_interval_ = this->mouse_keep_awake_interval_;
+      if (this->mouse_keep_awake_jitter_ > 0) {
+        int32_t jitter = (rand() % (this->mouse_keep_awake_jitter_ * 2 + 1)) - this->mouse_keep_awake_jitter_;
+        this->mouse_keep_awake_next_interval_ = (int32_t)this->mouse_keep_awake_interval_ + jitter > 1000 
+                                                 ? this->mouse_keep_awake_interval_ + jitter : 1000;
+      }
+      this->mouse_keep_awake_last_time_ = now;
+    }
+  }
+  
+  // Handle keyboard keep awake
+  if (this->keyboard_keep_awake_enabled_) {
+    if (now - this->keyboard_keep_awake_last_time_ >= this->keyboard_keep_awake_next_interval_) {
+      this->key_tap(this->keyboard_keep_awake_key_);
+      ESP_LOGD(TAG, "Keyboard keep awake: tap(%s)", this->keyboard_keep_awake_key_.c_str());
+      
+      this->keyboard_keep_awake_next_interval_ = this->keyboard_keep_awake_interval_;
+      if (this->keyboard_keep_awake_jitter_ > 0) {
+        int32_t jitter = (rand() % (this->keyboard_keep_awake_jitter_ * 2 + 1)) - this->keyboard_keep_awake_jitter_;
+        this->keyboard_keep_awake_next_interval_ = (int32_t)this->keyboard_keep_awake_interval_ + jitter > 1000 
+                                                   ? this->keyboard_keep_awake_interval_ + jitter : 1000;
+      }
+      this->keyboard_keep_awake_last_time_ = now;
+    }
+  }
+}
 
 void HIDComposite::dump_config() {
   ESP_LOGCONFIG(TAG, "HID Composite (Mouse + Keyboard):");
@@ -268,15 +307,22 @@ void HIDComposite::key_tap(const std::string &key, uint8_t modifier) {
   this->key_release();
 }
 
-void HIDComposite::type(const std::string &text) {
-  ESP_LOGI(TAG, "Type: %s", text.c_str());
+void HIDComposite::type(const std::string &text, uint32_t speed_ms, uint32_t jitter_ms) {
+  ESP_LOGI(TAG, "Type: %s (speed=%dms, jitter=%dms)", text.c_str(), speed_ms, jitter_ms);
   for (char c : text) {
     uint8_t keycode, mod;
     this->char_to_keycode(c, keycode, mod);
     this->send_keyboard_report(mod, keycode);
     delay(10);
     this->send_keyboard_report(0, 0);
-    delay(10);
+    
+    // Calculate delay with jitter
+    uint32_t delay_ms = speed_ms;
+    if (jitter_ms > 0) {
+      int32_t jitter = (rand() % (jitter_ms * 2 + 1)) - jitter_ms;
+      delay_ms = (int32_t)speed_ms + jitter > 10 ? speed_ms + jitter : 10;
+    }
+    delay(delay_ms);
   }
 }
 
@@ -352,6 +398,35 @@ uint8_t HIDComposite::key_name_to_keycode(const std::string &key) {
   return KEY_NONE;
 }
 
+void HIDComposite::start_mouse_keep_awake(uint32_t interval_ms, uint32_t jitter_ms) {
+  ESP_LOGI(TAG, "Starting mouse keep awake: interval=%dms, jitter=%dms", interval_ms, jitter_ms);
+  this->mouse_keep_awake_interval_ = interval_ms;
+  this->mouse_keep_awake_jitter_ = jitter_ms;
+  this->mouse_keep_awake_last_time_ = millis();
+  this->mouse_keep_awake_next_interval_ = interval_ms;
+  this->mouse_keep_awake_enabled_ = true;
+}
+
+void HIDComposite::stop_mouse_keep_awake() {
+  ESP_LOGI(TAG, "Stopping mouse keep awake");
+  this->mouse_keep_awake_enabled_ = false;
+}
+
+void HIDComposite::start_keyboard_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {
+  ESP_LOGI(TAG, "Starting keyboard keep awake: key=%s, interval=%dms, jitter=%dms", key.c_str(), interval_ms, jitter_ms);
+  this->keyboard_keep_awake_key_ = key;
+  this->keyboard_keep_awake_interval_ = interval_ms;
+  this->keyboard_keep_awake_jitter_ = jitter_ms;
+  this->keyboard_keep_awake_last_time_ = millis();
+  this->keyboard_keep_awake_next_interval_ = interval_ms;
+  this->keyboard_keep_awake_enabled_ = true;
+}
+
+void HIDComposite::stop_keyboard_keep_awake() {
+  ESP_LOGI(TAG, "Stopping keyboard keep awake");
+  this->keyboard_keep_awake_enabled_ = false;
+}
+
 }  // namespace hid_composite
 }  // namespace esphome
 
@@ -372,6 +447,18 @@ void HIDComposite::mouse_release_all() {}
 void HIDComposite::key_press(const std::string &key, uint8_t modifier) {}
 void HIDComposite::key_release() {}
 void HIDComposite::key_release_all() {}
+void HIDComposite::key_tap(const std::string &key, uint8_t modifier) {}
+void HIDComposite::type(const std::string &text, uint32_t speed_ms, uint32_t jitter_ms) {}
+void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {}
+uint8_t HIDComposite::key_name_to_keycode(const std::string &key) { return 0; }
+void HIDComposite::send_mouse_report() {}
+void HIDComposite::send_keyboard_report(uint8_t modifier, uint8_t keycode) {}
+void HIDComposite::start_mouse_keep_awake(uint32_t interval_ms, uint32_t jitter_ms) {}
+void HIDComposite::stop_mouse_keep_awake() {}
+void HIDComposite::start_keyboard_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {}
+void HIDComposite::stop_keyboard_keep_awake() {}
+}  // namespace hid_composite
+}  // namespace esphome
 void HIDComposite::key_tap(const std::string &key, uint8_t modifier) {}
 void HIDComposite::type(const std::string &text) {}
 void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {}
