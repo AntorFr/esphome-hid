@@ -18,7 +18,7 @@ esp32:
       # Console on UART0 for debugging (recommended)
       CONFIG_ESP_CONSOLE_UART_DEFAULT: "y"
     components:
-      - espressif/esp_tinyusb^2.0.1
+      - espressif/esp_tinyusb~2.0.0
 
 # Load external component
 external_components:
