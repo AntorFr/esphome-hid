@@ -369,7 +369,8 @@ void HIDComposite::type(const std::string &text, uint32_t speed_ms, uint32_t jit
   }
 }
 
-void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {
+// QWERTY US layout mapping
+void HIDComposite::char_to_keycode_qwerty(char c, uint8_t &keycode, uint8_t &modifier) {
   modifier = 0;
   if (c >= 'a' && c <= 'z') { keycode = KEY_A + (c - 'a'); return; }
   if (c >= 'A' && c <= 'Z') { keycode = KEY_A + (c - 'A'); modifier = MOD_LEFT_SHIFT; return; }
@@ -412,6 +413,106 @@ void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) 
     case '>': keycode = KEY_PERIOD; modifier = MOD_LEFT_SHIFT; break;
     case '?': keycode = KEY_SLASH; modifier = MOD_LEFT_SHIFT; break;
     default: keycode = KEY_NONE; break;
+  }
+}
+
+// AZERTY FR layout mapping
+void HIDComposite::char_to_keycode_azerty(char c, uint8_t &keycode, uint8_t &modifier) {
+  modifier = 0;
+  
+  // AZERTY swaps: A<->Q, Z<->W, M position differs
+  if (c == 'a') { keycode = KEY_Q; return; }
+  if (c == 'A') { keycode = KEY_Q; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'q') { keycode = KEY_A; return; }
+  if (c == 'Q') { keycode = KEY_A; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'z') { keycode = KEY_W; return; }
+  if (c == 'Z') { keycode = KEY_W; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'w') { keycode = KEY_Z; return; }
+  if (c == 'W') { keycode = KEY_Z; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'm') { keycode = KEY_SEMICOLON; return; }
+  if (c == 'M') { keycode = KEY_SEMICOLON; modifier = MOD_LEFT_SHIFT; return; }
+  
+  // Other letters
+  if (c >= 'a' && c <= 'z') { keycode = KEY_A + (c - 'a'); return; }
+  if (c >= 'A' && c <= 'Z') { keycode = KEY_A + (c - 'A'); modifier = MOD_LEFT_SHIFT; return; }
+  
+  // Numbers on AZERTY require Shift
+  if (c >= '1' && c <= '9') { keycode = KEY_1 + (c - '1'); modifier = MOD_LEFT_SHIFT; return; }
+  if (c == '0') { keycode = KEY_0; modifier = MOD_LEFT_SHIFT; return; }
+  
+  switch (c) {
+    case ' ': keycode = KEY_SPACE; break;
+    case '\n': keycode = KEY_ENTER; break;
+    case '\t': keycode = KEY_TAB; break;
+    case '&': keycode = KEY_1; break;
+    case '-': keycode = KEY_6; break;
+    case '_': keycode = KEY_8; break;
+    case '.': keycode = KEY_COMMA; modifier = MOD_LEFT_SHIFT; break;
+    case ',': keycode = KEY_M; break;
+    case ';': keycode = KEY_COMMA; break;
+    case ':': keycode = KEY_PERIOD; break;
+    case '!': keycode = KEY_SLASH; break;
+    case '?': keycode = KEY_M; modifier = MOD_LEFT_SHIFT; break;
+    case '/': keycode = KEY_PERIOD; modifier = MOD_LEFT_SHIFT; break;
+    case '*': keycode = KEY_BACKSLASH; break;
+    case '(': keycode = KEY_5; break;
+    case ')': keycode = KEY_MINUS; break;
+    case '=': keycode = KEY_EQUAL; break;
+    case '+': keycode = KEY_EQUAL; modifier = MOD_LEFT_SHIFT; break;
+    default: keycode = KEY_NONE; break;
+  }
+}
+
+// QWERTZ DE layout mapping
+void HIDComposite::char_to_keycode_qwertz(char c, uint8_t &keycode, uint8_t &modifier) {
+  modifier = 0;
+  
+  // QWERTZ swaps Y<->Z
+  if (c == 'y') { keycode = KEY_Z; return; }
+  if (c == 'Y') { keycode = KEY_Z; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'z') { keycode = KEY_Y; return; }
+  if (c == 'Z') { keycode = KEY_Y; modifier = MOD_LEFT_SHIFT; return; }
+  
+  if (c >= 'a' && c <= 'z') { keycode = KEY_A + (c - 'a'); return; }
+  if (c >= 'A' && c <= 'Z') { keycode = KEY_A + (c - 'A'); modifier = MOD_LEFT_SHIFT; return; }
+  if (c >= '1' && c <= '9') { keycode = KEY_1 + (c - '1'); return; }
+  if (c == '0') { keycode = KEY_0; return; }
+  
+  switch (c) {
+    case ' ': keycode = KEY_SPACE; break;
+    case '\n': keycode = KEY_ENTER; break;
+    case '\t': keycode = KEY_TAB; break;
+    case '-': keycode = KEY_SLASH; break;
+    case '_': keycode = KEY_SLASH; modifier = MOD_LEFT_SHIFT; break;
+    case '.': keycode = KEY_PERIOD; break;
+    case ',': keycode = KEY_COMMA; break;
+    case ';': keycode = KEY_COMMA; modifier = MOD_LEFT_SHIFT; break;
+    case ':': keycode = KEY_PERIOD; modifier = MOD_LEFT_SHIFT; break;
+    case '?': keycode = KEY_MINUS; modifier = MOD_LEFT_SHIFT; break;
+    case '!': keycode = KEY_1; modifier = MOD_LEFT_SHIFT; break;
+    case '/': keycode = KEY_7; modifier = MOD_LEFT_SHIFT; break;
+    case '(': keycode = KEY_8; modifier = MOD_LEFT_SHIFT; break;
+    case ')': keycode = KEY_9; modifier = MOD_LEFT_SHIFT; break;
+    case '=': keycode = KEY_0; modifier = MOD_LEFT_SHIFT; break;
+    case '+': keycode = KEY_RIGHT_BRACE; break;
+    case '*': keycode = KEY_RIGHT_BRACE; modifier = MOD_LEFT_SHIFT; break;
+    default: keycode = KEY_NONE; break;
+  }
+}
+
+// Main dispatcher based on layout
+void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {
+  switch (this->layout_) {
+    case LAYOUT_AZERTY_FR:
+      this->char_to_keycode_azerty(c, keycode, modifier);
+      break;
+    case LAYOUT_QWERTZ_DE:
+      this->char_to_keycode_qwertz(c, keycode, modifier);
+      break;
+    case LAYOUT_QWERTY_US:
+    default:
+      this->char_to_keycode_qwerty(c, keycode, modifier);
+      break;
   }
 }
 
@@ -599,6 +700,9 @@ void HIDComposite::key_release_all() {}
 void HIDComposite::key_tap(const std::string &key, uint8_t modifier) {}
 void HIDComposite::type(const std::string &text, uint32_t speed_ms, uint32_t jitter_ms) {}
 void HIDComposite::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {}
+void HIDComposite::char_to_keycode_qwerty(char c, uint8_t &keycode, uint8_t &modifier) {}
+void HIDComposite::char_to_keycode_azerty(char c, uint8_t &keycode, uint8_t &modifier) {}
+void HIDComposite::char_to_keycode_qwertz(char c, uint8_t &keycode, uint8_t &modifier) {}
 uint8_t HIDComposite::key_name_to_keycode(const std::string &key) { return 0; }
 void HIDComposite::send_mouse_report() {}
 void HIDComposite::send_keyboard_report(uint8_t modifier, uint8_t keycode) {}

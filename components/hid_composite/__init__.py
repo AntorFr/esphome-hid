@@ -7,8 +7,18 @@ CODEOWNERS = ["@AntorFr"]
 DEPENDENCIES = ["esp32"]
 CONFLICTS_WITH = ["hid_mouse", "hid_keyboard", "hid_telephony"]
 
+CONF_LAYOUT = "layout"
+
 hid_composite_ns = cg.esphome_ns.namespace("hid_composite")
 HIDComposite = hid_composite_ns.class_("HIDComposite", cg.Component)
+
+# Keyboard layout enum
+KeyboardLayout = hid_composite_ns.enum("KeyboardLayout")
+KEYBOARD_LAYOUTS = {
+    "QWERTY_US": KeyboardLayout.LAYOUT_QWERTY_US,
+    "AZERTY_FR": KeyboardLayout.LAYOUT_AZERTY_FR,
+    "QWERTZ_DE": KeyboardLayout.LAYOUT_QWERTZ_DE,
+}
 
 # Mouse Actions
 MoveAction = hid_composite_ns.class_("MoveAction", automation.Action)
@@ -90,11 +100,13 @@ def validate_modifiers(value):
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(HIDComposite),
+    cv.Optional(CONF_LAYOUT, default="QWERTY_US"): cv.enum(KEYBOARD_LAYOUTS, upper=True),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    cg.add(var.set_layout(config[CONF_LAYOUT]))
 
 # ============ Mouse Actions ============
 

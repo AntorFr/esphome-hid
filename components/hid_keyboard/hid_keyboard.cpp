@@ -205,7 +205,8 @@ void HIDKeyboard::type(const std::string &text, uint32_t speed_ms, uint32_t jitt
   }
 }
 
-void HIDKeyboard::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {
+// QWERTY US layout mapping
+void HIDKeyboard::char_to_keycode_qwerty(char c, uint8_t &keycode, uint8_t &modifier) {
   modifier = 0;
   if (c >= 'a' && c <= 'z') { keycode = KEY_A + (c - 'a'); return; }
   if (c >= 'A' && c <= 'Z') { keycode = KEY_A + (c - 'A'); modifier = MOD_LEFT_SHIFT; return; }
@@ -248,6 +249,113 @@ void HIDKeyboard::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {
     case '>': keycode = KEY_PERIOD; modifier = MOD_LEFT_SHIFT; break;
     case '?': keycode = KEY_SLASH; modifier = MOD_LEFT_SHIFT; break;
     default: keycode = KEY_NONE; break;
+  }
+}
+
+// AZERTY FR layout mapping
+// Maps characters to the scancodes that will produce them on an AZERTY keyboard
+void HIDKeyboard::char_to_keycode_azerty(char c, uint8_t &keycode, uint8_t &modifier) {
+  modifier = 0;
+  
+  // AZERTY has swapped letter positions: A<->Q, Z<->W, M position differs
+  // The scancodes are based on physical positions, so we need to map accordingly
+  
+  // Letters - AZERTY swaps: A<->Q, Z<->W
+  if (c == 'a') { keycode = KEY_Q; return; }  // 'a' is at Q position on AZERTY
+  if (c == 'A') { keycode = KEY_Q; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'q') { keycode = KEY_A; return; }  // 'q' is at A position on AZERTY
+  if (c == 'Q') { keycode = KEY_A; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'z') { keycode = KEY_W; return; }  // 'z' is at W position on AZERTY
+  if (c == 'Z') { keycode = KEY_W; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'w') { keycode = KEY_Z; return; }  // 'w' is at Z position on AZERTY
+  if (c == 'W') { keycode = KEY_Z; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'm') { keycode = KEY_SEMICOLON; return; }  // 'm' is at ; position on AZERTY
+  if (c == 'M') { keycode = KEY_SEMICOLON; modifier = MOD_LEFT_SHIFT; return; }
+  
+  // Other letters (same position)
+  if (c >= 'a' && c <= 'z') { keycode = KEY_A + (c - 'a'); return; }
+  if (c >= 'A' && c <= 'Z') { keycode = KEY_A + (c - 'A'); modifier = MOD_LEFT_SHIFT; return; }
+  
+  // Numbers on AZERTY require Shift (top row produces symbols by default)
+  if (c >= '1' && c <= '9') { keycode = KEY_1 + (c - '1'); modifier = MOD_LEFT_SHIFT; return; }
+  if (c == '0') { keycode = KEY_0; modifier = MOD_LEFT_SHIFT; return; }
+  
+  switch (c) {
+    case ' ': keycode = KEY_SPACE; break;
+    case '\n': keycode = KEY_ENTER; break;
+    case '\t': keycode = KEY_TAB; break;
+    // AZERTY specific: top row without shift produces: &é"'(-è_çà)
+    case '&': keycode = KEY_1; break;
+    // é, ", ' etc. need proper handling but are non-ASCII
+    case '-': keycode = KEY_6; break;  // - is at 6 position on AZERTY
+    case '_': keycode = KEY_8; break;  // _ is at 8 position on AZERTY
+    case '.': keycode = KEY_COMMA; modifier = MOD_LEFT_SHIFT; break;  // . is Shift+, on AZERTY
+    case ',': keycode = KEY_M; break;  // , is at M position on AZERTY
+    case ';': keycode = KEY_COMMA; break;  // ; is at , position on AZERTY
+    case ':': keycode = KEY_PERIOD; break;  // : is at . position on AZERTY
+    case '!': keycode = KEY_SLASH; break;  // ! is at / position on AZERTY
+    case '?': keycode = KEY_M; modifier = MOD_LEFT_SHIFT; break;  // ? is Shift+M on AZERTY
+    case '/': keycode = KEY_PERIOD; modifier = MOD_LEFT_SHIFT; break;  // / is Shift+. on AZERTY
+    case '*': keycode = KEY_BACKSLASH; break;  // * position varies
+    case '(': keycode = KEY_5; break;  // ( is at 5 position on AZERTY
+    case ')': keycode = KEY_MINUS; break;  // ) is at - position on AZERTY
+    case '=': keycode = KEY_EQUAL; break;
+    case '+': keycode = KEY_EQUAL; modifier = MOD_LEFT_SHIFT; break;
+    default: keycode = KEY_NONE; break;
+  }
+}
+
+// QWERTZ DE layout mapping (German)
+void HIDKeyboard::char_to_keycode_qwertz(char c, uint8_t &keycode, uint8_t &modifier) {
+  modifier = 0;
+  
+  // QWERTZ swaps Y<->Z
+  if (c == 'y') { keycode = KEY_Z; return; }
+  if (c == 'Y') { keycode = KEY_Z; modifier = MOD_LEFT_SHIFT; return; }
+  if (c == 'z') { keycode = KEY_Y; return; }
+  if (c == 'Z') { keycode = KEY_Y; modifier = MOD_LEFT_SHIFT; return; }
+  
+  // Other letters (same position)
+  if (c >= 'a' && c <= 'z') { keycode = KEY_A + (c - 'a'); return; }
+  if (c >= 'A' && c <= 'Z') { keycode = KEY_A + (c - 'A'); modifier = MOD_LEFT_SHIFT; return; }
+  if (c >= '1' && c <= '9') { keycode = KEY_1 + (c - '1'); return; }
+  if (c == '0') { keycode = KEY_0; return; }
+  
+  switch (c) {
+    case ' ': keycode = KEY_SPACE; break;
+    case '\n': keycode = KEY_ENTER; break;
+    case '\t': keycode = KEY_TAB; break;
+    case '-': keycode = KEY_SLASH; break;  // - is at / position on QWERTZ
+    case '_': keycode = KEY_SLASH; modifier = MOD_LEFT_SHIFT; break;
+    case '.': keycode = KEY_PERIOD; break;
+    case ',': keycode = KEY_COMMA; break;
+    case ';': keycode = KEY_COMMA; modifier = MOD_LEFT_SHIFT; break;
+    case ':': keycode = KEY_PERIOD; modifier = MOD_LEFT_SHIFT; break;
+    case '?': keycode = KEY_MINUS; modifier = MOD_LEFT_SHIFT; break;
+    case '!': keycode = KEY_1; modifier = MOD_LEFT_SHIFT; break;
+    case '/': keycode = KEY_7; modifier = MOD_LEFT_SHIFT; break;
+    case '(': keycode = KEY_8; modifier = MOD_LEFT_SHIFT; break;
+    case ')': keycode = KEY_9; modifier = MOD_LEFT_SHIFT; break;
+    case '=': keycode = KEY_0; modifier = MOD_LEFT_SHIFT; break;
+    case '+': keycode = KEY_RIGHT_BRACE; break;
+    case '*': keycode = KEY_RIGHT_BRACE; modifier = MOD_LEFT_SHIFT; break;
+    default: keycode = KEY_NONE; break;
+  }
+}
+
+// Main dispatcher based on layout
+void HIDKeyboard::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {
+  switch (this->layout_) {
+    case LAYOUT_AZERTY_FR:
+      this->char_to_keycode_azerty(c, keycode, modifier);
+      break;
+    case LAYOUT_QWERTZ_DE:
+      this->char_to_keycode_qwertz(c, keycode, modifier);
+      break;
+    case LAYOUT_QWERTY_US:
+    default:
+      this->char_to_keycode_qwerty(c, keycode, modifier);
+      break;
   }
 }
 
@@ -319,6 +427,9 @@ void HIDKeyboard::release_all() {}
 void HIDKeyboard::tap(const std::string &key, uint8_t modifier) {}
 void HIDKeyboard::type(const std::string &text, uint32_t speed_ms, uint32_t jitter_ms) {}
 void HIDKeyboard::char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier) {}
+void HIDKeyboard::char_to_keycode_qwerty(char c, uint8_t &keycode, uint8_t &modifier) {}
+void HIDKeyboard::char_to_keycode_azerty(char c, uint8_t &keycode, uint8_t &modifier) {}
+void HIDKeyboard::char_to_keycode_qwertz(char c, uint8_t &keycode, uint8_t &modifier) {}
 uint8_t HIDKeyboard::key_name_to_keycode(const std::string &key) { return 0; }
 void HIDKeyboard::send_report(uint8_t modifier, uint8_t keycode) {}
 void HIDKeyboard::start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms) {}

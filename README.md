@@ -44,7 +44,8 @@ All components provide:
 ## Requirements
 
 - **ESP32-S3** with native USB OTG port
-- **ESP-IDF framework** (not Arduino)
+- **ESP-IDF framework** (default since ESPHome 2026.1.0)
+- **ESPHome 2025.8.0+** recommended (2026.1.0+ for best experience)
 - Board with **two USB ports** recommended:
   - **UART/CH340 port**: for flashing and serial logs
   - **USB native/JTAG port**: for HID devices
@@ -93,7 +94,7 @@ esphome:
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: esp-idf
+    type: esp-idf  # Default since ESPHome 2026.1.0
     sdkconfig_options:
       CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
       CONFIG_TINYUSB_HID_COUNT: "1"
@@ -123,6 +124,7 @@ hid_mouse:
 ```yaml
 hid_keyboard:
   id: my_keyboard
+  layout: AZERTY_FR  # Optional: QWERTY_US (default), AZERTY_FR, QWERTZ_DE
 ```
 
 | Action | Description |
@@ -131,6 +133,18 @@ hid_keyboard:
 | `hid_keyboard.release` | Release all keys |
 | `hid_keyboard.tap` | Press and release key |
 | `hid_keyboard.type` | Type text string |
+
+### Keyboard Layouts
+
+The `layout` option configures the keyboard mapping for the `type` action. This must match the keyboard layout configured on the target PC:
+
+| Layout | Description |
+|--------|-------------|
+| `QWERTY_US` | US English (default) |
+| `AZERTY_FR` | French AZERTY |
+| `QWERTZ_DE` | German QWERTZ |
+
+> **Note**: The layout only affects the `type` action. Actions like `press`, `tap` send raw scancodes and work regardless of PC keyboard settings.
 
 ### Special Keys
 ENTER, ESC, BACKSPACE, TAB, SPACE, DELETE, INSERT, HOME, END, PAGEUP, PAGEDOWN, UP, DOWN, LEFT, RIGHT, F1-F12
@@ -161,6 +175,7 @@ NONE, CTRL, SHIFT, ALT, GUI (WIN/CMD), CTRL_SHIFT, CTRL_ALT, CTRL_GUI, etc.
 ```yaml
 hid_composite:
   id: my_hid
+  layout: AZERTY_FR  # Optional: QWERTY_US (default), AZERTY_FR, QWERTZ_DE
 ```
 
 Mouse: `hid_composite.move`, `hid_composite.click`, `hid_composite.mouse_press`, `hid_composite.mouse_release`, `hid_composite.scroll`

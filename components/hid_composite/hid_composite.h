@@ -14,6 +14,13 @@
 namespace esphome {
 namespace hid_composite {
 
+// Keyboard layouts
+enum KeyboardLayout : uint8_t {
+  LAYOUT_QWERTY_US = 0,
+  LAYOUT_AZERTY_FR = 1,
+  LAYOUT_QWERTZ_DE = 2,
+};
+
 enum MouseButton : uint8_t {
   BUTTON_LEFT = 0,
   BUTTON_RIGHT = 1,
@@ -53,6 +60,10 @@ class HIDComposite : public Component {
   void key_tap(const std::string &key, uint8_t modifier = 0);
   void type(const std::string &text, uint32_t speed_ms = 50, uint32_t jitter_ms = 0);
   
+  // Layout
+  void set_layout(KeyboardLayout layout) { this->layout_ = layout; }
+  KeyboardLayout get_layout() const { return this->layout_; }
+  
   // Keep awake (mouse)
   void start_mouse_keep_awake(uint32_t interval_ms, uint32_t jitter_ms = 0);
   void stop_mouse_keep_awake();
@@ -90,11 +101,15 @@ class HIDComposite : public Component {
 
  protected:
   bool initialized_{false};
+  KeyboardLayout layout_{LAYOUT_QWERTY_US};
   uint8_t mouse_buttons_{0};
 
   void send_mouse_report();
   void send_keyboard_report(uint8_t modifier, uint8_t keycode);
   void char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier);
+  void char_to_keycode_qwerty(char c, uint8_t &keycode, uint8_t &modifier);
+  void char_to_keycode_azerty(char c, uint8_t &keycode, uint8_t &modifier);
+  void char_to_keycode_qwertz(char c, uint8_t &keycode, uint8_t &modifier);
   uint8_t key_name_to_keycode(const std::string &key);
   
   // Mouse keep awake state

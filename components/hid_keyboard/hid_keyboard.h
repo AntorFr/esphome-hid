@@ -15,6 +15,13 @@
 namespace esphome {
 namespace hid_keyboard {
 
+// Keyboard layouts
+enum KeyboardLayout : uint8_t {
+  LAYOUT_QWERTY_US = 0,
+  LAYOUT_AZERTY_FR = 1,
+  LAYOUT_QWERTZ_DE = 2,
+};
+
 // Modifier keys
 enum Modifier : uint8_t {
   MOD_NONE = 0x00,
@@ -41,6 +48,10 @@ class HIDKeyboard : public Component {
   void tap(const std::string &key, uint8_t modifier = MOD_NONE);
   void type(const std::string &text, uint32_t speed_ms = 50, uint32_t jitter_ms = 0);
   
+  // Layout
+  void set_layout(KeyboardLayout layout) { this->layout_ = layout; }
+  KeyboardLayout get_layout() const { return this->layout_; }
+  
   // Keep awake
   void start_keep_awake(const std::string &key, uint32_t interval_ms, uint32_t jitter_ms = 0);
   void stop_keep_awake();
@@ -53,7 +64,11 @@ class HIDKeyboard : public Component {
 
  protected:
   bool initialized_{false};
+  KeyboardLayout layout_{LAYOUT_QWERTY_US};
   void char_to_keycode(char c, uint8_t &keycode, uint8_t &modifier);
+  void char_to_keycode_qwerty(char c, uint8_t &keycode, uint8_t &modifier);
+  void char_to_keycode_azerty(char c, uint8_t &keycode, uint8_t &modifier);
+  void char_to_keycode_qwertz(char c, uint8_t &keycode, uint8_t &modifier);
   uint8_t key_name_to_keycode(const std::string &key);
   void send_report(uint8_t modifier, uint8_t keycode);
   

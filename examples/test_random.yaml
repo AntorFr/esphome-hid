@@ -8,7 +8,6 @@ esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: esp-idf
-    version: recommended
     sdkconfig_options:
       # Disable USB-Serial/JTAG to free USB port for HID (REQUIRED)
       CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"

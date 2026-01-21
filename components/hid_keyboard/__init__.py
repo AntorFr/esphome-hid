@@ -9,8 +9,18 @@ CODEOWNERS = ["@AntorFr"]
 # Cannot be used with hid_mouse or hid_composite (each configures USB)
 CONFLICTS_WITH = ["hid_mouse", "hid_composite"]
 
+CONF_LAYOUT = "layout"
+
 hid_keyboard_ns = cg.esphome_ns.namespace("hid_keyboard")
 HIDKeyboard = hid_keyboard_ns.class_("HIDKeyboard", cg.Component)
+
+# Keyboard layout enum
+KeyboardLayout = hid_keyboard_ns.enum("KeyboardLayout")
+KEYBOARD_LAYOUTS = {
+    "QWERTY_US": KeyboardLayout.LAYOUT_QWERTY_US,
+    "AZERTY_FR": KeyboardLayout.LAYOUT_AZERTY_FR,
+    "QWERTZ_DE": KeyboardLayout.LAYOUT_QWERTZ_DE,
+}
 
 # Actions
 PressAction = hid_keyboard_ns.class_("PressAction", automation.Action)
@@ -24,6 +34,7 @@ StopKeepAwakeAction = hid_keyboard_ns.class_("StopKeepAwakeAction", automation.A
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(HIDKeyboard),
+        cv.Optional(CONF_LAYOUT, default="QWERTY_US"): cv.enum(KEYBOARD_LAYOUTS, upper=True),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -31,6 +42,7 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    cg.add(var.set_layout(config[CONF_LAYOUT]))
 
 
 CONF_KEY = "key"

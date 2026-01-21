@@ -9,7 +9,6 @@ esp32:
   variant: esp32s3
   framework:
     type: esp-idf
-    version: recommended
     sdkconfig_options:
       CONFIG_USJ_ENABLE_USB_SERIAL_JTAG: "n"
       CONFIG_TINYUSB_HID_COUNT: "1"
