@@ -21,8 +21,13 @@ static HIDComposite *g_hid_composite_instance = nullptr;
 // Report IDs
 #define REPORT_ID_KEYBOARD   1
 #define REPORT_ID_MOUSE      2
-#define REPORT_ID_TELEPHONY  3
-#define REPORT_ID_CONSUMER   4
+// Telephony uses Poly BT700 compatible Report IDs:
+#define REPORT_ID_TELEPHONY_INPUT  0x20  // Input report (buttons to host)
+#define REPORT_ID_TELEPHONY_RING   0x21  // Output: Ring LED
+#define REPORT_ID_TELEPHONY_HOLD   0x22  // Output: Hold LED  
+#define REPORT_ID_TELEPHONY_MUTE   0x23  // Output: Mute LED (Teams sends mute state here!)
+#define REPORT_ID_TELEPHONY_OFFHOOK 0x24 // Output: Off-Hook LED
+#define REPORT_ID_TELEPHONY_HOOK   0x25  // Output: Hook Switch LED
 
 // Key codes
 enum KeyCode : uint8_t {
@@ -120,74 +125,87 @@ static const uint8_t hid_report_descriptor[] = {
     0xC0,              //   End Collection
     0xC0,              // End Collection
 
-    // Telephony (Headset) - Compatible with Microsoft Teams
+    // ============================================
+    // Telephony Headset - Poly BT700 Compatible
+    // ============================================
     0x05, 0x0B,        // Usage Page (Telephony Devices)
-    0x09, 0x05,        // Usage (Headset)
+    0x09, 0x05,        // Usage (Headset) - NOT Telephony Device!
     0xA1, 0x01,        // Collection (Application)
-    0x85, REPORT_ID_TELEPHONY, // Report ID
+    0x85, 0x20,        // Report ID (0x20 = 32) - Input report
     
     // Input Report (buttons we send to host)
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
-    
-    // Hook Switch - bit 0
     0x95, 0x01,        //   Report Count (1)
+    
+    // Hook Switch - bit 0 (No Preferred State)
     0x09, 0x20,        //   Usage (Hook Switch)
-    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x81, 0x22,        //   Input (Data, Variable, Absolute, No Preferred)
     
-    // Phone Mute - bit 1
-    0x95, 0x01,        //   Report Count (1)
+    // Phone Mute - bit 1 (RELATIVE - key difference!)
     0x09, 0x2F,        //   Usage (Phone Mute)
+    0x81, 0x06,        //   Input (Data, Variable, RELATIVE)
+    
+    // Flash - bit 2
+    0x09, 0x21,        //   Usage (Flash)
     0x81, 0x02,        //   Input (Data, Variable, Absolute)
     
-    // Padding - bits 2-7
-    0x95, 0x06,        //   Report Count (6)
-    0x81, 0x03,        //   Input (Constant)
+    // Redial - bit 3
+    0x09, 0x24,        //   Usage (Redial)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
     
-    // Output Report (LEDs from host)
-    0x75, 0x01,        //   Report Size (1)
+    // Button (Usage Page 0x09) - bit 4
+    0x05, 0x09,        //   Usage Page (Button)
+    0x09, 0x07,        //   Usage (Button 7)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
     
-    // Mute LED - bit 0
-    0x95, 0x01,        //   Report Count (1)
-    0x09, 0x9E,        //   Usage (Mute)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    // Padding - bits 5-7
+    0x75, 0x03,        //   Report Size (3)
+    0x81, 0x01,        //   Input (Constant)
     
-    // Off Hook LED - bit 1
-    0x95, 0x01,        //   Report Count (1)
-    0x09, 0x17,        //   Usage (Off Hook)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
-    
-    // Ring LED - bit 2
-    0x95, 0x01,        //   Report Count (1)
+    // Output Reports (LEDs from host) - Separate Report IDs like Poly
+    // Report ID 0x21 - Ring LED
+    0x85, 0x21,        //   Report ID (0x21)
+    0x05, 0x08,        //   Usage Page (LEDs)
     0x09, 0x18,        //   Usage (Ring)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
-    
-    // Padding - bits 3-7
-    0x95, 0x05,        //   Report Count (5)
-    0x91, 0x03,        //   Output (Constant)
-    
-    0xC0,              // End Collection
-
-    // ============================================
-    // Consumer Control (for Mute compatibility)
-    // ============================================
-    0x05, 0x0C,        // Usage Page (Consumer)
-    0x09, 0x01,        // Usage (Consumer Control)
-    0xA1, 0x01,        // Collection (Application)
-    0x85, REPORT_ID_CONSUMER, //   Report ID (4)
-    
-    // Mute button - bit 0
-    0x09, 0xE2,        //   Usage (Mute)
-    0x15, 0x00,        //   Logical Minimum (0)
-    0x25, 0x01,        //   Logical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
-    0x95, 0x01,        //   Report Count (1)
-    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
+    0x75, 0x07,        //   Report Size (7) - padding
+    0x91, 0x01,        //   Output (Constant)
     
-    // Padding - bits 1-7
-    0x95, 0x07,        //   Report Count (7)
-    0x81, 0x03,        //   Input (Constant)
+    // Report ID 0x22 - Hold LED
+    0x85, 0x22,        //   Report ID (0x22)
+    0x09, 0x1E,        //   Usage (Hold)
+    0x75, 0x01,        //   Report Size (1)
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
+    0x75, 0x07,        //   Report Size (7) - padding
+    0x91, 0x01,        //   Output (Constant)
+    
+    // Report ID 0x23 - Mute LED (THIS IS WHERE TEAMS SENDS MUTE STATE!)
+    0x85, 0x23,        //   Report ID (0x23)
+    0x09, 0x09,        //   Usage (Mute) - LED Page usage
+    0x75, 0x01,        //   Report Size (1)
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
+    0x75, 0x07,        //   Report Size (7) - padding
+    0x91, 0x01,        //   Output (Constant)
+    
+    // Report ID 0x24 - Off-Hook LED
+    0x85, 0x24,        //   Report ID (0x24)
+    0x09, 0x17,        //   Usage (Off-Hook)
+    0x75, 0x01,        //   Report Size (1)
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
+    0x75, 0x07,        //   Report Size (7) - padding
+    0x91, 0x01,        //   Output (Constant)
+    
+    // Report ID 0x25 - Hook Switch LED
+    0x85, 0x25,        //   Report ID (0x25)
+    0x05, 0x0B,        //   Usage Page (Telephony)
+    0x09, 0x20,        //   Usage (Hook Switch)
+    0x75, 0x01,        //   Report Size (1)
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
+    0x75, 0x07,        //   Report Size (7) - padding
+    0x91, 0x01,        //   Output (Constant)
     
     0xC0,              // End Collection
 };
@@ -229,9 +247,10 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) { return hid_repor
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen) { return 0; }
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize) {
-  // Host is sending us LED states (for telephony)
-  if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == REPORT_ID_TELEPHONY && g_hid_composite_instance != nullptr) {
-    g_hid_composite_instance->process_host_report(buffer, bufsize);
+  // Host is sending us LED states (for telephony) - Poly BT700 format uses separate Report IDs
+  if (report_type == HID_REPORT_TYPE_OUTPUT && g_hid_composite_instance != nullptr) {
+    // Pass report_id to process_host_report
+    g_hid_composite_instance->process_host_report(report_id, buffer, bufsize);
   }
 }
 }
@@ -626,51 +645,35 @@ bool HIDComposite::is_ready() {
   return tud_mounted() && !tud_suspended() && tud_hid_ready();
 }
 
-// ============ Telephony Functions ============
+// ============ Telephony Functions (Poly BT700 Compatible) ============
 
 void HIDComposite::mute() {
-  ESP_LOGD(TAG, "Sending mute (both Telephony + Consumer)");
-  
-  // Send Telephony mute
+  ESP_LOGI(TAG, "Sending mute (Poly BT700 format)");
+  // RELATIVE input: send 1 (press) then 0 (release)
   this->mute_button_ = true;
   this->send_telephony_report();
-  delay(20);
+  delay(50);
   this->mute_button_ = false;
   this->send_telephony_report();
-  
-  // Also send Consumer mute
-  delay(20);
-  this->send_consumer_mute_();
 }
 
 void HIDComposite::unmute() {
-  ESP_LOGD(TAG, "Sending unmute (both Telephony + Consumer)");
-  
-  // Send Telephony mute (toggle)
+  ESP_LOGI(TAG, "Sending unmute (Poly BT700 format)");
+  // Same as mute - it's a toggle
   this->mute_button_ = true;
   this->send_telephony_report();
-  delay(20);
+  delay(50);
   this->mute_button_ = false;
   this->send_telephony_report();
-  
-  // Also send Consumer mute
-  delay(20);
-  this->send_consumer_mute_();
 }
 
 void HIDComposite::toggle_mute() {
-  ESP_LOGD(TAG, "Toggling mute (both Telephony + Consumer)");
-  
-  // Send Telephony mute (toggle)
+  ESP_LOGI(TAG, "Toggling mute (Poly BT700 format)");
   this->mute_button_ = true;
   this->send_telephony_report();
-  delay(20);
+  delay(50);
   this->mute_button_ = false;
   this->send_telephony_report();
-  
-  // Also send Consumer mute
-  delay(20);
-  this->send_consumer_mute_();
 }
 
 void HIDComposite::hook_switch(bool state) {
@@ -694,34 +697,26 @@ void HIDComposite::hang_up() {
 void HIDComposite::send_telephony_report() {
   if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
   
-  // Report: bit 0 = Hook Switch, bit 1 = Phone Mute
+  // Poly BT700 compatible format:
+  // bit 0 = Hook Switch (No Preferred)
+  // bit 1 = Phone Mute (RELATIVE!)
+  // bit 2 = Flash
+  // bit 3 = Redial
+  // bit 4 = Button 7
+  // bits 5-7 = padding
   uint8_t report = 0;
   if (this->hook_button_) report |= 0x01;
   if (this->mute_button_) report |= 0x02;
   
-  tud_hid_report(REPORT_ID_TELEPHONY, &report, sizeof(report));
+  tud_hid_report(REPORT_ID_TELEPHONY_INPUT, &report, sizeof(report));
   
-  ESP_LOGD(TAG, "Sent telephony report: hook=%d, mute=%d", this->hook_button_, this->mute_button_);
-}
-
-void HIDComposite::send_consumer_mute_() {
-  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
-  
-  // Press mute
-  uint8_t report = 0x01;  // Bit 0 = Mute
-  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
-  ESP_LOGD(TAG, "Sent Consumer mute press");
-  
-  delay(50);
-  
-  // Release mute
-  report = 0x00;
-  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
-  ESP_LOGD(TAG, "Sent Consumer mute release");
+  ESP_LOGD(TAG, "Sent telephony report (0x20): hook=%d, mute=%d", this->hook_button_, this->mute_button_);
 }
 
 void HIDComposite::mute_telephony() {
-  ESP_LOGI(TAG, "Sending Telephony mute ONLY");
+  ESP_LOGI(TAG, "Sending Telephony mute (Poly BT700 compatible)");
+  // For RELATIVE input, we just need to send 1 then it auto-resets
+  // But we still toggle to be safe
   this->mute_button_ = true;
   this->send_telephony_report();
   delay(50);
@@ -730,43 +725,56 @@ void HIDComposite::mute_telephony() {
 }
 
 void HIDComposite::mute_consumer() {
-  ESP_LOGI(TAG, "Sending Consumer mute ONLY");
-  this->send_consumer_mute_();
+  ESP_LOGI(TAG, "Consumer mute removed - using Poly format now");
 }
 
-void HIDComposite::process_host_report(uint8_t const *buffer, uint16_t bufsize) {
+void HIDComposite::process_host_report(uint8_t report_id, uint8_t const *buffer, uint16_t bufsize) {
   if (bufsize < 1) return;
   
-  uint8_t leds = buffer[0];
+  uint8_t value = buffer[0] & 0x01;  // Each Poly report has 1 bit of data
   
-  bool new_muted = (leds & 0x01) != 0;     // Mute LED
-  bool new_off_hook = (leds & 0x02) != 0;  // Off Hook LED
-  bool new_ringing = (leds & 0x04) != 0;   // Ring LED
-  bool new_hold = (leds & 0x08) != 0;      // Hold LED
+  ESP_LOGD(TAG, "Received host report: ID=0x%02X, value=%d", report_id, value);
   
-  // Check for changes and trigger callbacks
-  if (new_muted != this->muted_) {
-    this->muted_ = new_muted;
-    ESP_LOGI(TAG, "Mute state changed: %s", new_muted ? "MUTED" : "UNMUTED");
-    this->mute_callbacks_.call(new_muted);
-  }
-  
-  if (new_off_hook != this->off_hook_) {
-    this->off_hook_ = new_off_hook;
-    ESP_LOGI(TAG, "Off-hook state changed: %s", new_off_hook ? "IN CALL" : "IDLE");
-    this->off_hook_callbacks_.call(new_off_hook);
-  }
-  
-  if (new_ringing != this->ringing_) {
-    this->ringing_ = new_ringing;
-    ESP_LOGI(TAG, "Ring state changed: %s", new_ringing ? "RINGING" : "NOT RINGING");
-    this->ring_callbacks_.call(new_ringing);
-  }
-  
-  if (new_hold != this->hold_) {
-    this->hold_ = new_hold;
-    ESP_LOGI(TAG, "Hold state changed: %s", new_hold ? "ON HOLD" : "NOT ON HOLD");
-    this->hold_callbacks_.call(new_hold);
+  switch (report_id) {
+    case REPORT_ID_TELEPHONY_MUTE: {  // 0x23 - Mute LED from Teams!
+      bool new_muted = (value != 0);
+      if (new_muted != this->muted_) {
+        this->muted_ = new_muted;
+        ESP_LOGI(TAG, ">>> MUTE STATE FROM TEAMS: %s <<<", new_muted ? "MUTED" : "UNMUTED");
+        this->mute_callbacks_.call(new_muted);
+      }
+      break;
+    }
+    case REPORT_ID_TELEPHONY_OFFHOOK: {  // 0x24 - Off-Hook LED
+      bool new_off_hook = (value != 0);
+      if (new_off_hook != this->off_hook_) {
+        this->off_hook_ = new_off_hook;
+        ESP_LOGI(TAG, "Off-hook state changed: %s", new_off_hook ? "IN CALL" : "IDLE");
+        this->off_hook_callbacks_.call(new_off_hook);
+      }
+      break;
+    }
+    case REPORT_ID_TELEPHONY_RING: {  // 0x21 - Ring LED
+      bool new_ringing = (value != 0);
+      if (new_ringing != this->ringing_) {
+        this->ringing_ = new_ringing;
+        ESP_LOGI(TAG, "Ring state changed: %s", new_ringing ? "RINGING" : "NOT RINGING");
+        this->ring_callbacks_.call(new_ringing);
+      }
+      break;
+    }
+    case REPORT_ID_TELEPHONY_HOLD: {  // 0x22 - Hold LED
+      bool new_hold = (value != 0);
+      if (new_hold != this->hold_) {
+        this->hold_ = new_hold;
+        ESP_LOGI(TAG, "Hold state changed: %s", new_hold ? "ON HOLD" : "NOT ON HOLD");
+        this->hold_callbacks_.call(new_hold);
+      }
+      break;
+    }
+    default:
+      ESP_LOGD(TAG, "Unknown report ID: 0x%02X", report_id);
+      break;
   }
 }
 

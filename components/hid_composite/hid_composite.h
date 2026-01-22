@@ -98,8 +98,8 @@ class HIDComposite : public Component {
   void add_on_ring_callback(std::function<void(bool)> &&callback) { this->ring_callbacks_.add(std::move(callback)); }
   void add_on_hold_callback(std::function<void(bool)> &&callback) { this->hold_callbacks_.add(std::move(callback)); }
   
-  // Process host report (for telephony LED states)
-  void process_host_report(uint8_t const *buffer, uint16_t bufsize);
+  // Process host report (for telephony LED states) - Poly BT700 format with separate Report IDs
+  void process_host_report(uint8_t report_id, uint8_t const *buffer, uint16_t bufsize);
 
  protected:
   bool initialized_{false};
@@ -138,7 +138,6 @@ class HIDComposite : public Component {
   bool mute_button_{false};
   
   void send_telephony_report();
-  void send_consumer_mute_();
   
   // Telephony callbacks
   CallbackManager<void(bool)> mute_callbacks_;
