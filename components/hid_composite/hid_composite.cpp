@@ -22,6 +22,7 @@ static HIDComposite *g_hid_composite_instance = nullptr;
 #define REPORT_ID_KEYBOARD   1
 #define REPORT_ID_MOUSE      2
 #define REPORT_ID_TELEPHONY  3
+#define REPORT_ID_CONSUMER   4
 
 // Key codes
 enum KeyCode : uint8_t {
@@ -119,7 +120,7 @@ static const uint8_t hid_report_descriptor[] = {
     0xC0,              //   End Collection
     0xC0,              // End Collection
 
-    // Telephony (Headset)
+    // Telephony (Headset) - Compatible with Microsoft Teams
     0x05, 0x0B,        // Usage Page (Telephony Devices)
     0x09, 0x05,        // Usage (Headset)
     0xA1, 0x01,        // Collection (Application)
@@ -128,26 +129,66 @@ static const uint8_t hid_report_descriptor[] = {
     // Input Report (buttons we send to host)
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
-    0x09, 0x20,        //   Usage (Hook Switch)
-    0x09, 0x2F,        //   Usage (Phone Mute)
     0x75, 0x01,        //   Report Size (1)
-    0x95, 0x02,        //   Report Count (2)
+    
+    // Hook Switch - bit 0
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x20,        //   Usage (Hook Switch)
     0x81, 0x02,        //   Input (Data, Variable, Absolute)
-    0x95, 0x06,        //   Report Count (6) - padding
+    
+    // Phone Mute - bit 1
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x2F,        //   Usage (Phone Mute)
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    
+    // Padding - bits 2-7
+    0x95, 0x06,        //   Report Count (6)
     0x81, 0x03,        //   Input (Constant)
     
     // Output Report (LEDs from host)
+    0x75, 0x01,        //   Report Size (1)
+    
+    // Mute LED - bit 0
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x9E,        //   Usage (Mute)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Off Hook LED - bit 1
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x17,        //   Usage (Off Hook)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Ring LED - bit 2
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x18,        //   Usage (Ring)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Padding - bits 3-7
+    0x95, 0x05,        //   Report Count (5)
+    0x91, 0x03,        //   Output (Constant)
+    
+    0xC0,              // End Collection
+
+    // ============================================
+    // Consumer Control (for Mute compatibility)
+    // ============================================
+    0x05, 0x0C,        // Usage Page (Consumer)
+    0x09, 0x01,        // Usage (Consumer Control)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, REPORT_ID_CONSUMER, //   Report ID (4)
+    
+    // Mute button - bit 0
+    0x09, 0xE2,        //   Usage (Mute)
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
-    0x09, 0x9E,        //   Usage (Mute LED)
-    0x09, 0x17,        //   Usage (Off Hook LED)
-    0x09, 0x18,        //   Usage (Ring LED)
-    0x09, 0x2A,        //   Usage (Hold LED)
     0x75, 0x01,        //   Report Size (1)
-    0x95, 0x04,        //   Report Count (4)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
-    0x95, 0x04,        //   Report Count (4) - padding
-    0x91, 0x03,        //   Output (Constant)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    
+    // Padding - bits 1-7
+    0x95, 0x07,        //   Report Count (7)
+    0x81, 0x03,        //   Input (Constant)
+    
     0xC0,              // End Collection
 };
 
@@ -588,30 +629,48 @@ bool HIDComposite::is_ready() {
 // ============ Telephony Functions ============
 
 void HIDComposite::mute() {
-  ESP_LOGD(TAG, "Sending mute");
+  ESP_LOGD(TAG, "Sending mute (both Telephony + Consumer)");
+  
+  // Send Telephony mute
   this->mute_button_ = true;
   this->send_telephony_report();
-  delay(50);
+  delay(20);
   this->mute_button_ = false;
   this->send_telephony_report();
+  
+  // Also send Consumer mute
+  delay(20);
+  this->send_consumer_mute_();
 }
 
 void HIDComposite::unmute() {
-  ESP_LOGD(TAG, "Sending unmute");
+  ESP_LOGD(TAG, "Sending unmute (both Telephony + Consumer)");
+  
+  // Send Telephony mute (toggle)
   this->mute_button_ = true;
   this->send_telephony_report();
-  delay(50);
+  delay(20);
   this->mute_button_ = false;
   this->send_telephony_report();
+  
+  // Also send Consumer mute
+  delay(20);
+  this->send_consumer_mute_();
 }
 
 void HIDComposite::toggle_mute() {
-  ESP_LOGD(TAG, "Toggling mute");
+  ESP_LOGD(TAG, "Toggling mute (both Telephony + Consumer)");
+  
+  // Send Telephony mute (toggle)
   this->mute_button_ = true;
   this->send_telephony_report();
-  delay(50);
+  delay(20);
   this->mute_button_ = false;
   this->send_telephony_report();
+  
+  // Also send Consumer mute
+  delay(20);
+  this->send_consumer_mute_();
 }
 
 void HIDComposite::hook_switch(bool state) {
@@ -643,6 +702,36 @@ void HIDComposite::send_telephony_report() {
   tud_hid_report(REPORT_ID_TELEPHONY, &report, sizeof(report));
   
   ESP_LOGD(TAG, "Sent telephony report: hook=%d, mute=%d", this->hook_button_, this->mute_button_);
+}
+
+void HIDComposite::send_consumer_mute_() {
+  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
+  
+  // Press mute
+  uint8_t report = 0x01;  // Bit 0 = Mute
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+  ESP_LOGD(TAG, "Sent Consumer mute press");
+  
+  delay(50);
+  
+  // Release mute
+  report = 0x00;
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+  ESP_LOGD(TAG, "Sent Consumer mute release");
+}
+
+void HIDComposite::mute_telephony() {
+  ESP_LOGI(TAG, "Sending Telephony mute ONLY");
+  this->mute_button_ = true;
+  this->send_telephony_report();
+  delay(50);
+  this->mute_button_ = false;
+  this->send_telephony_report();
+}
+
+void HIDComposite::mute_consumer() {
+  ESP_LOGI(TAG, "Sending Consumer mute ONLY");
+  this->send_consumer_mute_();
 }
 
 void HIDComposite::process_host_report(uint8_t const *buffer, uint16_t bufsize) {

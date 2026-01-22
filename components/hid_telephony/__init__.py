@@ -16,6 +16,8 @@ HIDTelephony = hid_telephony_ns.class_("HIDTelephony", cg.Component)
 MuteAction = hid_telephony_ns.class_("MuteAction", automation.Action)
 UnmuteAction = hid_telephony_ns.class_("UnmuteAction", automation.Action)
 ToggleMuteAction = hid_telephony_ns.class_("ToggleMuteAction", automation.Action)
+MuteTelephonyAction = hid_telephony_ns.class_("MuteTelephonyAction", automation.Action)
+MuteConsumerAction = hid_telephony_ns.class_("MuteConsumerAction", automation.Action)
 HookSwitchAction = hid_telephony_ns.class_("HookSwitchAction", automation.Action)
 HangUpAction = hid_telephony_ns.class_("HangUpAction", automation.Action)
 AnswerAction = hid_telephony_ns.class_("AnswerAction", automation.Action)
@@ -63,6 +65,30 @@ async def unmute_action_to_code(config, action_id, template_arg, args):
     cv.Schema({cv.GenerateID(): cv.use_id(HIDTelephony)}),
 )
 async def toggle_mute_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+
+# Action: Mute Telephony only (Page 0x0B) - for testing
+@automation.register_action(
+    "hid_telephony.mute_telephony",
+    MuteTelephonyAction,
+    cv.Schema({cv.GenerateID(): cv.use_id(HIDTelephony)}),
+)
+async def mute_telephony_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+
+# Action: Mute Consumer only (Page 0x0C) - for testing
+@automation.register_action(
+    "hid_telephony.mute_consumer",
+    MuteConsumerAction,
+    cv.Schema({cv.GenerateID(): cv.use_id(HIDTelephony)}),
+)
+async def mute_consumer_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
     return var

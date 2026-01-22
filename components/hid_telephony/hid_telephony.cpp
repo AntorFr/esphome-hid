@@ -20,53 +20,86 @@ HIDTelephony *g_hid_telephony_instance = nullptr;
 
 // Report IDs
 #define REPORT_ID_TELEPHONY 1
+#define REPORT_ID_CONSUMER 2
 
 // Telephony HID Report Descriptor
-// Based on USB HID Usage Tables for Telephony Devices (Usage Page 0x0B)
+// Includes BOTH Telephony Page (0x0B) AND Consumer Control Page (0x0C)
+// to test which one Teams recognizes
 static const uint8_t hid_report_descriptor[] = {
-    // Telephony Device (Headset)
+    // ========== TELEPHONY DEVICE (Headset) ==========
     0x05, 0x0B,        // Usage Page (Telephony Devices)
     0x09, 0x05,        // Usage (Headset)
     0xA1, 0x01,        // Collection (Application)
-    0x85, REPORT_ID_TELEPHONY,  // Report ID
+    0x85, REPORT_ID_TELEPHONY,  // Report ID (1)
     
     // ===== INPUT REPORT (Buttons we send to host) =====
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
-    0x95, 0x03,        //   Report Count (3)
     
-    // Hook Switch (Answer/End call)
+    // Hook Switch (Answer/End call) - bit 0
+    0x95, 0x01,        //   Report Count (1)
     0x09, 0x20,        //   Usage (Hook Switch)
-    // Phone Mute
-    0x09, 0x2F,        //   Usage (Phone Mute)
-    // Flash (for call waiting)
-    0x09, 0x21,        //   Usage (Flash)
     0x81, 0x02,        //   Input (Data, Variable, Absolute)
     
-    // Padding to make 1 byte
-    0x95, 0x05,        //   Report Count (5)
+    // Phone Mute - bit 1
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x2F,        //   Usage (Phone Mute)
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    
+    // Padding to make 1 byte - bits 2-7
+    0x95, 0x06,        //   Report Count (6)
     0x81, 0x03,        //   Input (Constant)
     
     // ===== OUTPUT REPORT (LEDs host sends to us) =====
-    0x95, 0x05,        //   Report Count (5)
     0x75, 0x01,        //   Report Size (1)
     
-    // Mute LED
-    0x09, 0x09,        //   Usage (Mute)
-    // Off Hook LED
-    0x09, 0x17,        //   Usage (Off Hook)
-    // Ring LED
-    0x09, 0x18,        //   Usage (Ring)
-    // Hold LED
-    0x09, 0x2C,        //   Usage (Hold)
-    // Microphone LED
-    0x09, 0x21,        //   Usage (Flash) - reused for Mic indicator
+    // Mute LED - bit 0
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x9E,        //   Usage (Mute)
     0x91, 0x02,        //   Output (Data, Variable, Absolute)
     
-    // Padding
-    0x95, 0x03,        //   Report Count (3)
+    // Off Hook LED - bit 1
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x17,        //   Usage (Off Hook)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Ring LED - bit 2
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x18,        //   Usage (Ring)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Padding - bits 3-7
+    0x95, 0x05,        //   Report Count (5)
     0x91, 0x03,        //   Output (Constant)
+    
+    0xC0,              // End Collection
+    
+    // ========== CONSUMER CONTROL (for Teams/Zoom/etc) ==========
+    0x05, 0x0C,        // Usage Page (Consumer)
+    0x09, 0x01,        // Usage (Consumer Control)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, REPORT_ID_CONSUMER,  // Report ID (2)
+    
+    // Mute button (Consumer style)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0xE2,        //   Usage (Mute) - Consumer Mute
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    
+    // Volume Up
+    0x09, 0xE9,        //   Usage (Volume Increment)
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    
+    // Volume Down
+    0x09, 0xEA,        //   Usage (Volume Decrement)
+    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    
+    // Padding - bits 3-7
+    0x95, 0x05,        //   Report Count (5)
+    0x81, 0x03,        //   Input (Constant)
     
     0xC0,              // End Collection
 };
@@ -179,6 +212,7 @@ void HIDTelephony::loop() {
 void HIDTelephony::dump_config() {
   ESP_LOGCONFIG(TAG, "HID Telephony:");
   ESP_LOGCONFIG(TAG, "  Initialized: %s", this->initialized_ ? "YES" : "NO");
+  ESP_LOGCONFIG(TAG, "  Telephony Page (0x0B) + Consumer Page (0x0C) enabled");
 }
 
 void HIDTelephony::send_report_() {
@@ -186,14 +220,28 @@ void HIDTelephony::send_report_() {
     return;
   }
 
-  // Build input report: [Hook Switch, Mute, Flash, padding...]
-  uint8_t report = 0;
-  if (this->hook_button_) report |= 0x01;  // Hook Switch
-  if (this->mute_button_) report |= 0x02;  // Mute
+  // Build Telephony report: [Hook Switch, Mute, padding...]
+  uint8_t telephony_report = 0;
+  if (this->hook_button_) telephony_report |= 0x01;  // Hook Switch - bit 0
+  if (this->mute_button_) telephony_report |= 0x02;  // Phone Mute - bit 1
   
-  tud_hid_report(REPORT_ID_TELEPHONY, &report, 1);
+  tud_hid_report(REPORT_ID_TELEPHONY, &telephony_report, 1);
+  ESP_LOGI(TAG, "Sent TELEPHONY report (ID=%d): hook=%d, mute=%d", 
+           REPORT_ID_TELEPHONY, this->hook_button_, this->mute_button_);
+}
+
+void HIDTelephony::send_consumer_mute_() {
+  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) {
+    return;
+  }
+
+  // Build Consumer report: [Mute, Vol+, Vol-, padding...]
+  uint8_t consumer_report = 0;
+  if (this->mute_button_) consumer_report |= 0x01;  // Consumer Mute - bit 0
   
-  ESP_LOGD(TAG, "Sent report: hook=%d, mute=%d", this->hook_button_, this->mute_button_);
+  tud_hid_report(REPORT_ID_CONSUMER, &consumer_report, 1);
+  ESP_LOGI(TAG, "Sent CONSUMER report (ID=%d): mute=%d", 
+           REPORT_ID_CONSUMER, this->mute_button_);
 }
 
 void HIDTelephony::process_host_report(uint8_t const *buffer, uint16_t bufsize) {
@@ -229,12 +277,38 @@ void HIDTelephony::process_host_report(uint8_t const *buffer, uint16_t bufsize) 
 }
 
 void HIDTelephony::mute() {
-  ESP_LOGI(TAG, "Sending mute button press");
+  ESP_LOGI(TAG, "Sending mute button press (Telephony + Consumer)");
+  this->mute_button_ = true;
+  
+  // Send BOTH reports to test which one Teams recognizes
+  this->send_report_();           // Telephony Page (0x0B) - Report ID 1
+  delay(10);
+  this->send_consumer_mute_();    // Consumer Page (0x0C) - Report ID 2
+  
+  delay(50);
+  
+  this->mute_button_ = false;
+  this->send_report_();           // Release Telephony
+  delay(10);
+  this->send_consumer_mute_();    // Release Consumer
+}
+
+void HIDTelephony::mute_telephony() {
+  ESP_LOGI(TAG, "Sending TELEPHONY mute only (Page 0x0B, Usage 0x2F)");
   this->mute_button_ = true;
   this->send_report_();
   delay(50);
   this->mute_button_ = false;
   this->send_report_();
+}
+
+void HIDTelephony::mute_consumer() {
+  ESP_LOGI(TAG, "Sending CONSUMER mute only (Page 0x0C, Usage 0xE2)");
+  this->mute_button_ = true;
+  this->send_consumer_mute_();
+  delay(50);
+  this->mute_button_ = false;
+  this->send_consumer_mute_();
 }
 
 void HIDTelephony::unmute() {

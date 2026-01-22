@@ -68,19 +68,30 @@ button:
   
   # Telephony actions
   - platform: template
-    name: "Toggle Mute"
+    name: "Toggle Mute (Both)"
     on_press:
       - hid_composite.toggle_mute:
   
   - platform: template
-    name: "Mute"
+    name: "Mute (Both)"
     on_press:
       - hid_composite.mute:
   
   - platform: template
-    name: "Unmute"
+    name: "Unmute (Both)"
     on_press:
       - hid_composite.unmute:
+
+  # Test specific mute methods
+  - platform: template
+    name: "Mute Telephony Only"
+    on_press:
+      - hid_composite.mute_telephony:
+  
+  - platform: template
+    name: "Mute Consumer Only"
+    on_press:
+      - hid_composite.mute_consumer:
   
   - platform: template
     name: "Answer Call"

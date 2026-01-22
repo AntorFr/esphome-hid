@@ -21,10 +21,14 @@ class HIDTelephony : public Component {
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
-  // Mute control
+  // Mute control - envoie les deux rapports (Telephony + Consumer)
   void mute();
   void unmute();
   void toggle_mute();
+  
+  // Mute control séparé pour test
+  void mute_telephony();   // Envoie uniquement le rapport Telephony (0x0B)
+  void mute_consumer();    // Envoie uniquement le rapport Consumer (0x0C)
   
   // Call control
   void hook_switch();  // Toggle off-hook/on-hook
@@ -54,6 +58,7 @@ class HIDTelephony : public Component {
 
  protected:
   void send_report_();
+  void send_consumer_mute_();
   
   bool initialized_{false};
   
@@ -95,6 +100,18 @@ template<typename... Ts>
 class ToggleMuteAction : public Action<Ts...>, public Parented<HIDTelephony> {
  public:
   void play(Ts... x) override { this->parent_->toggle_mute(); }
+};
+
+template<typename... Ts>
+class MuteTelephonyAction : public Action<Ts...>, public Parented<HIDTelephony> {
+ public:
+  void play(Ts... x) override { this->parent_->mute_telephony(); }
+};
+
+template<typename... Ts>
+class MuteConsumerAction : public Action<Ts...>, public Parented<HIDTelephony> {
+ public:
+  void play(Ts... x) override { this->parent_->mute_consumer(); }
 };
 
 template<typename... Ts>

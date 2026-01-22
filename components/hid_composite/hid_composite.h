@@ -80,6 +80,8 @@ class HIDComposite : public Component {
   void mute();
   void unmute();
   void toggle_mute();
+  void mute_telephony();   // Envoie uniquement le rapport Telephony (0x0B)
+  void mute_consumer();    // Envoie uniquement le rapport Consumer (0x0C)
   void hook_switch(bool state);
   void answer_call();
   void hang_up();
@@ -136,6 +138,7 @@ class HIDComposite : public Component {
   bool mute_button_{false};
   
   void send_telephony_report();
+  void send_consumer_mute_();
   
   // Telephony callbacks
   CallbackManager<void(bool)> mute_callbacks_;
@@ -291,6 +294,18 @@ template<typename... Ts>
 class ToggleMuteAction : public Action<Ts...>, public Parented<HIDComposite> {
  public:
   void play(Ts... x) override { this->parent_->toggle_mute(); }
+};
+
+template<typename... Ts>
+class MuteTelephonyAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->mute_telephony(); }
+};
+
+template<typename... Ts>
+class MuteConsumerAction : public Action<Ts...>, public Parented<HIDComposite> {
+ public:
+  void play(Ts... x) override { this->parent_->mute_consumer(); }
 };
 
 template<typename... Ts>

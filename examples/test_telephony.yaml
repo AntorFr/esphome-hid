@@ -31,6 +31,10 @@ binary_sensor:
     name: "PC Connected"
   
   - platform: hid_telephony
+    type: muted
+    name: "Muted Status (Telephony)"
+  
+  - platform: hid_telephony
     type: in_call
     name: "In Call"
   
@@ -41,14 +45,24 @@ binary_sensor:
 switch:
   - platform: hid_telephony
     type: mute
-    name: "Mute"
+    name: "Mute Switch"
 
 # Test buttons
 button:
   - platform: template
-    name: "Toggle Mute"
+    name: "Mute (Both)"
     on_press:
       - hid_telephony.toggle_mute:
+
+  - platform: template
+    name: "Mute TELEPHONY Only (0x0B)"
+    on_press:
+      - hid_telephony.mute_telephony:
+
+  - platform: template
+    name: "Mute CONSUMER Only (0x0C)"
+    on_press:
+      - hid_telephony.mute_consumer:
 
   - platform: template
     name: "Answer Call"
