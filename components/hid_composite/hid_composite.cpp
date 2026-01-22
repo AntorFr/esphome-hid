@@ -573,12 +573,16 @@ void HIDComposite::stop_keyboard_keep_awake() {
 
 bool HIDComposite::is_connected() {
   if (!this->initialized_) return false;
-  return tud_mounted();
+  // tud_mounted() alone is not enough when behind a hub:
+  // the hub may keep the device enumerated even when the PC is disconnected.
+  // tud_suspended() detects when the host stops sending SOF frames (~3ms),
+  // which happens when the PC is disconnected from the hub.
+  return tud_mounted() && !tud_suspended();
 }
 
 bool HIDComposite::is_ready() {
   if (!this->initialized_) return false;
-  return tud_mounted() && tud_hid_ready();
+  return tud_mounted() && !tud_suspended() && tud_hid_ready();
 }
 
 // ============ Telephony Functions ============
