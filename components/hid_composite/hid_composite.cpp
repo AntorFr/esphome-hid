@@ -21,13 +21,9 @@ static HIDComposite *g_hid_composite_instance = nullptr;
 // Report IDs
 #define REPORT_ID_KEYBOARD   1
 #define REPORT_ID_MOUSE      2
-// Telephony uses Poly BT700 compatible Report IDs:
-#define REPORT_ID_TELEPHONY_INPUT  0x20  // Input report (buttons to host)
-#define REPORT_ID_TELEPHONY_RING   0x21  // Output: Ring LED
-#define REPORT_ID_TELEPHONY_HOLD   0x22  // Output: Hold LED  
-#define REPORT_ID_TELEPHONY_MUTE   0x23  // Output: Mute LED (Teams sends mute state here!)
-#define REPORT_ID_TELEPHONY_OFFHOOK 0x24 // Output: Off-Hook LED
-#define REPORT_ID_TELEPHONY_HOOK   0x25  // Output: Hook Switch LED
+// Telephony Report IDs - Simplified for Teams compatibility
+#define REPORT_ID_TELEPHONY_INPUT  0x03  // Input report (buttons to host)
+#define REPORT_ID_TELEPHONY_LED    0x04  // Output report (LEDs from host)
 
 // Key codes
 enum KeyCode : uint8_t {
@@ -126,86 +122,68 @@ static const uint8_t hid_report_descriptor[] = {
     0xC0,              // End Collection
 
     // ============================================
-    // Telephony Headset - Poly BT700 Compatible
+    // Telephony Headset - Microsoft Teams Compatible
+    // Simplified descriptor that Teams recognizes
     // ============================================
     0x05, 0x0B,        // Usage Page (Telephony Devices)
-    0x09, 0x05,        // Usage (Headset) - NOT Telephony Device!
+    0x09, 0x05,        // Usage (Headset)
     0xA1, 0x01,        // Collection (Application)
-    0x85, 0x20,        // Report ID (0x20 = 32) - Input report
     
-    // Input Report (buttons we send to host)
+    // === INPUT REPORT (device -> host) ===
+    0x85, 0x03,        // Report ID (3) - Simple ID that Teams expects
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
+    
+    // Hook Switch - Answer/End call
     0x95, 0x01,        //   Report Count (1)
-    
-    // Hook Switch - bit 0 (No Preferred State)
     0x09, 0x20,        //   Usage (Hook Switch)
-    0x81, 0x22,        //   Input (Data, Variable, Absolute, No Preferred)
-    
-    // Phone Mute - bit 1 (RELATIVE - key difference!)
-    0x09, 0x2F,        //   Usage (Phone Mute)
-    0x81, 0x06,        //   Input (Data, Variable, RELATIVE)
-    
-    // Flash - bit 2
-    0x09, 0x21,        //   Usage (Flash)
     0x81, 0x02,        //   Input (Data, Variable, Absolute)
     
-    // Redial - bit 3
-    0x09, 0x24,        //   Usage (Redial)
-    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    // Phone Mute - Toggle microphone
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x2F,        //   Usage (Phone Mute)
+    0x81, 0x06,        //   Input (Data, Variable, Relative) - RELATIVE is key!
     
-    // Button (Usage Page 0x09) - bit 4
-    0x05, 0x09,        //   Usage Page (Button)
-    0x09, 0x07,        //   Usage (Button 7)
-    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    // Padding to byte boundary
+    0x95, 0x06,        //   Report Count (6)
+    0x81, 0x03,        //   Input (Constant)
     
-    // Padding - bits 5-7
-    0x75, 0x03,        //   Report Size (3)
-    0x81, 0x01,        //   Input (Constant)
-    
-    // Output Reports (LEDs from host) - Separate Report IDs like Poly
-    // Report ID 0x21 - Ring LED
-    0x85, 0x21,        //   Report ID (0x21)
+    // === OUTPUT REPORT (host -> device) ===
+    0x85, 0x04,        // Report ID (4) - LED report
     0x05, 0x08,        //   Usage Page (LEDs)
-    0x09, 0x18,        //   Usage (Ring)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
-    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
-    0x75, 0x07,        //   Report Size (7) - padding
-    0x91, 0x01,        //   Output (Constant)
     
-    // Report ID 0x22 - Hold LED
-    0x85, 0x22,        //   Report ID (0x22)
-    0x09, 0x1E,        //   Usage (Hold)
-    0x75, 0x01,        //   Report Size (1)
-    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
-    0x75, 0x07,        //   Report Size (7) - padding
-    0x91, 0x01,        //   Output (Constant)
+    // Mute LED - Teams sends mute state here
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x09,        //   Usage (Mute)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
     
-    // Report ID 0x23 - Mute LED (THIS IS WHERE TEAMS SENDS MUTE STATE!)
-    0x85, 0x23,        //   Report ID (0x23)
-    0x09, 0x09,        //   Usage (Mute) - LED Page usage
-    0x75, 0x01,        //   Report Size (1)
-    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
-    0x75, 0x07,        //   Report Size (7) - padding
-    0x91, 0x01,        //   Output (Constant)
-    
-    // Report ID 0x24 - Off-Hook LED
-    0x85, 0x24,        //   Report ID (0x24)
+    // Off-Hook LED - In-call indicator
+    0x95, 0x01,        //   Report Count (1)
     0x09, 0x17,        //   Usage (Off-Hook)
-    0x75, 0x01,        //   Report Size (1)
-    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
-    0x75, 0x07,        //   Report Size (7) - padding
-    0x91, 0x01,        //   Output (Constant)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
     
-    // Report ID 0x25 - Hook Switch LED
-    0x85, 0x25,        //   Report ID (0x25)
-    0x05, 0x0B,        //   Usage Page (Telephony)
-    0x09, 0x20,        //   Usage (Hook Switch)
-    0x75, 0x01,        //   Report Size (1)
-    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred)
-    0x75, 0x07,        //   Report Size (7) - padding
-    0x91, 0x01,        //   Output (Constant)
+    // Ring LED
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x18,        //   Usage (Ring)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Hold LED
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x20,        //   Usage (Hold)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Microphone LED (some apps use this for mute)
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x21,        //   Usage (Microphone)
+    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    
+    // Padding
+    0x95, 0x03,        //   Report Count (3)
+    0x91, 0x03,        //   Output (Constant)
     
     0xC0,              // End Collection
 };
@@ -731,50 +709,48 @@ void HIDComposite::mute_consumer() {
 void HIDComposite::process_host_report(uint8_t report_id, uint8_t const *buffer, uint16_t bufsize) {
   if (bufsize < 1) return;
   
-  uint8_t value = buffer[0] & 0x01;  // Each Poly report has 1 bit of data
+  ESP_LOGI(TAG, ">>> Received host report: ID=0x%02X, size=%d, data=0x%02X", report_id, bufsize, buffer[0]);
   
-  ESP_LOGD(TAG, "Received host report: ID=0x%02X, value=%d", report_id, value);
-  
-  switch (report_id) {
-    case REPORT_ID_TELEPHONY_MUTE: {  // 0x23 - Mute LED from Teams!
-      bool new_muted = (value != 0);
-      if (new_muted != this->muted_) {
-        this->muted_ = new_muted;
-        ESP_LOGI(TAG, ">>> MUTE STATE FROM TEAMS: %s <<<", new_muted ? "MUTED" : "UNMUTED");
-        this->mute_callbacks_.call(new_muted);
-      }
-      break;
+  if (report_id == REPORT_ID_TELEPHONY_LED) {
+    // LED report format:
+    // bit 0 = Mute LED
+    // bit 1 = Off-Hook LED
+    // bit 2 = Ring LED
+    // bit 3 = Hold LED
+    // bit 4 = Microphone LED
+    uint8_t leds = buffer[0];
+    
+    bool new_muted = (leds & 0x01) != 0;
+    bool new_off_hook = (leds & 0x02) != 0;
+    bool new_ringing = (leds & 0x04) != 0;
+    bool new_hold = (leds & 0x08) != 0;
+    bool new_mic = (leds & 0x10) != 0;
+    
+    ESP_LOGI(TAG, "LED Report: Mute=%d, OffHook=%d, Ring=%d, Hold=%d, Mic=%d",
+             new_muted, new_off_hook, new_ringing, new_hold, new_mic);
+    
+    if (new_muted != this->muted_) {
+      this->muted_ = new_muted;
+      ESP_LOGI(TAG, ">>> MUTE STATE FROM TEAMS: %s <<<", new_muted ? "MUTED" : "UNMUTED");
+      this->mute_callbacks_.call(new_muted);
     }
-    case REPORT_ID_TELEPHONY_OFFHOOK: {  // 0x24 - Off-Hook LED
-      bool new_off_hook = (value != 0);
-      if (new_off_hook != this->off_hook_) {
-        this->off_hook_ = new_off_hook;
-        ESP_LOGI(TAG, "Off-hook state changed: %s", new_off_hook ? "IN CALL" : "IDLE");
-        this->off_hook_callbacks_.call(new_off_hook);
-      }
-      break;
+    
+    if (new_off_hook != this->off_hook_) {
+      this->off_hook_ = new_off_hook;
+      ESP_LOGI(TAG, "Off-hook state changed: %s", new_off_hook ? "IN CALL" : "IDLE");
+      this->off_hook_callbacks_.call(new_off_hook);
     }
-    case REPORT_ID_TELEPHONY_RING: {  // 0x21 - Ring LED
-      bool new_ringing = (value != 0);
-      if (new_ringing != this->ringing_) {
-        this->ringing_ = new_ringing;
-        ESP_LOGI(TAG, "Ring state changed: %s", new_ringing ? "RINGING" : "NOT RINGING");
-        this->ring_callbacks_.call(new_ringing);
-      }
-      break;
+    
+    if (new_ringing != this->ringing_) {
+      this->ringing_ = new_ringing;
+      ESP_LOGI(TAG, "Ring state changed: %s", new_ringing ? "RINGING" : "NOT RINGING");
+      this->ring_callbacks_.call(new_ringing);
     }
-    case REPORT_ID_TELEPHONY_HOLD: {  // 0x22 - Hold LED
-      bool new_hold = (value != 0);
-      if (new_hold != this->hold_) {
-        this->hold_ = new_hold;
-        ESP_LOGI(TAG, "Hold state changed: %s", new_hold ? "ON HOLD" : "NOT ON HOLD");
-        this->hold_callbacks_.call(new_hold);
-      }
-      break;
-    }
-    default:
-      ESP_LOGD(TAG, "Unknown report ID: 0x%02X", report_id);
-      break;
+  } else if (report_id == REPORT_ID_KEYBOARD) {
+    // Keyboard LED report (Num Lock, Caps Lock, etc)
+    ESP_LOGD(TAG, "Keyboard LED report: 0x%02X", buffer[0]);
+  } else {
+    ESP_LOGD(TAG, "Unknown report ID: 0x%02X", report_id);
   }
 }
 
