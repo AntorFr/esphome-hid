@@ -23,10 +23,11 @@ HIDTelephony *g_hid_telephony_instance = nullptr;
 #define REPORT_ID_CONSUMER 2
 
 // Telephony HID Report Descriptor
-// Includes BOTH Telephony Page (0x0B) AND Consumer Control Page (0x0C)
-// to test which one Teams recognizes
+// Based on Poly BT700 Teams-certified headset descriptor analysis
+// Key insight: Phone Mute uses RELATIVE flag (0x06) not ABSOLUTE (0x02)
 static const uint8_t hid_report_descriptor[] = {
     // ========== TELEPHONY DEVICE (Headset) ==========
+    // This matches the Poly BT700 structure for Teams compatibility
     0x05, 0x0B,        // Usage Page (Telephony Devices)
     0x09, 0x05,        // Usage (Headset)
     0xA1, 0x01,        // Collection (Application)
@@ -38,64 +39,95 @@ static const uint8_t hid_report_descriptor[] = {
     0x75, 0x01,        //   Report Size (1)
     
     // Hook Switch (Answer/End call) - bit 0
+    // Poly uses: No-Preferred-State flag (0x22) for stateful control
     0x95, 0x01,        //   Report Count (1)
     0x09, 0x20,        //   Usage (Hook Switch)
-    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x81, 0x22,        //   Input (Data, Variable, Absolute, No Preferred State)
     
     // Phone Mute - bit 1
+    // CRITICAL: Poly uses RELATIVE flag (0x06) - this is a momentary button!
+    // Teams expects a pulse (1 then 0), not a held state
     0x95, 0x01,        //   Report Count (1)
     0x09, 0x2F,        //   Usage (Phone Mute)
+    0x81, 0x06,        //   Input (Data, Variable, RELATIVE) - momentary button
+    
+    // Flash - bit 2 (Poly has this)
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x21,        //   Usage (Flash)
     0x81, 0x02,        //   Input (Data, Variable, Absolute)
     
-    // Padding to make 1 byte - bits 2-7
-    0x95, 0x06,        //   Report Count (6)
+    // Redial - bit 3 (Poly has this)
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x24,        //   Usage (Redial)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    
+    // Button 7 - bit 4 (Generic button from Button Page - Poly uses this)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x09, 0x07,        //   Usage (Button 7)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    
+    // Padding to make 1 byte - bits 5-7
+    0x95, 0x03,        //   Report Count (3)
     0x81, 0x03,        //   Input (Constant)
     
     // ===== OUTPUT REPORT (LEDs host sends to us) =====
+    // Back to Telephony page for LEDs
+    0x05, 0x0B,        //   Usage Page (Telephony Devices)
     0x75, 0x01,        //   Report Size (1)
     
-    // Mute LED - bit 0
+    // Mute LED - bit 0 (Usage 0x18 = Do Not Disturb, used by Poly for mute indicator)
     0x95, 0x01,        //   Report Count (1)
-    0x09, 0x9E,        //   Usage (Mute)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    0x05, 0x08,        //   Usage Page (LEDs)
+    0x09, 0x18,        //   Usage (Do Not Disturb) - Poly Report 33
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred State)
     
-    // Off Hook LED - bit 1
+    // Speaker LED - bit 1 (Usage 0x1E)
     0x95, 0x01,        //   Report Count (1)
-    0x09, 0x17,        //   Usage (Off Hook)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    0x09, 0x1E,        //   Usage (Speaker) - Poly Report 34
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred State)
     
-    // Ring LED - bit 2
+    // Mute LED alternate - bit 2 (Usage 0x09)
     0x95, 0x01,        //   Report Count (1)
-    0x09, 0x18,        //   Usage (Ring)
-    0x91, 0x02,        //   Output (Data, Variable, Absolute)
+    0x09, 0x09,        //   Usage (Mute) - Poly Report 35
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred State)
     
-    // Padding - bits 3-7
-    0x95, 0x05,        //   Report Count (5)
+    // Off Hook LED - bit 3 (Usage 0x17)
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x17,        //   Usage (Off Hook) - Poly Report 36
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred State)
+    
+    // Ring LED - bit 4 (Usage 0x20)
+    0x95, 0x01,        //   Report Count (1)
+    0x09, 0x20,        //   Usage (On-Line) - Poly Report 37
+    0x91, 0x22,        //   Output (Data, Variable, Absolute, No Preferred State)
+    
+    // Padding - bits 5-7
+    0x95, 0x03,        //   Report Count (3)
     0x91, 0x03,        //   Output (Constant)
     
     0xC0,              // End Collection
     
-    // ========== CONSUMER CONTROL (for Teams/Zoom/etc) ==========
+    // ========== CONSUMER CONTROL (backup for non-Teams apps) ==========
     0x05, 0x0C,        // Usage Page (Consumer)
     0x09, 0x01,        // Usage (Consumer Control)
     0xA1, 0x01,        // Collection (Application)
     0x85, REPORT_ID_CONSUMER,  // Report ID (2)
     
-    // Mute button (Consumer style)
+    // Mute button (Consumer style) - also RELATIVE for consistency
     0x15, 0x00,        //   Logical Minimum (0)
     0x25, 0x01,        //   Logical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
     0x95, 0x01,        //   Report Count (1)
     0x09, 0xE2,        //   Usage (Mute) - Consumer Mute
-    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x81, 0x06,        //   Input (Data, Variable, RELATIVE)
     
     // Volume Up
     0x09, 0xE9,        //   Usage (Volume Increment)
-    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
     
     // Volume Down
     0x09, 0xEA,        //   Usage (Volume Decrement)
-    0x81, 0x02,        //   Input (Data, Variable, Absolute)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
     
     // Padding - bits 3-7
     0x95, 0x05,        //   Report Count (5)
@@ -249,10 +281,20 @@ void HIDTelephony::process_host_report(uint8_t const *buffer, uint16_t bufsize) 
   
   uint8_t leds = buffer[0];
   
-  bool new_muted = (leds & 0x01) != 0;     // Mute LED
-  bool new_off_hook = (leds & 0x02) != 0;  // Off Hook LED
-  bool new_ringing = (leds & 0x04) != 0;   // Ring LED
-  bool new_hold = (leds & 0x08) != 0;      // Hold LED
+  // LED bit mapping (matching new descriptor based on Poly BT700):
+  // bit 0: Do Not Disturb (0x18) - Teams uses this for mute indicator
+  // bit 1: Speaker (0x1E)
+  // bit 2: Mute (0x09) - alternate mute LED
+  // bit 3: Off Hook (0x17)
+  // bit 4: On-Line (0x20) - ring/call indicator
+  
+  bool new_muted = ((leds & 0x01) != 0) || ((leds & 0x04) != 0);  // DND or Mute LED
+  bool new_off_hook = (leds & 0x08) != 0;  // Off Hook LED - bit 3
+  bool new_ringing = (leds & 0x10) != 0;   // On-Line LED - bit 4
+  bool new_hold = false;  // Not mapped currently
+  
+  ESP_LOGD(TAG, "Received LED report: 0x%02X (mute=%d, offhook=%d, ring=%d)", 
+           leds, new_muted, new_off_hook, new_ringing);
   
   // Check for changes and trigger callbacks
   if (new_muted != this->muted_) {

@@ -81,10 +81,14 @@ class HIDComposite : public Component {
   void unmute();
   void toggle_mute();
   void mute_telephony();   // Envoie uniquement le rapport Telephony (0x0B)
-  void mute_consumer();    // Envoie uniquement le rapport Consumer (0x0C)
+  void mute_consumer();    // Envoie uniquement le rapport Consumer (0x0C) - Works with Teams!
   void hook_switch(bool state);
   void answer_call();
   void hang_up();
+  
+  // Volume control (Consumer Control)
+  void volume_up();
+  void volume_down();
   
   // Telephony state getters
   bool is_muted() { return this->muted_; }

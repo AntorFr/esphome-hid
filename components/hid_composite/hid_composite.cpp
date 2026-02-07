@@ -21,6 +21,7 @@ static HIDComposite *g_hid_composite_instance = nullptr;
 // Report IDs
 #define REPORT_ID_KEYBOARD   1
 #define REPORT_ID_MOUSE      2
+#define REPORT_ID_CONSUMER   5   // Consumer Control (media keys, mute)
 // Telephony Report IDs - Simplified for Teams compatibility
 #define REPORT_ID_TELEPHONY_INPUT  0x03  // Input report (buttons to host)
 #define REPORT_ID_TELEPHONY_LED    0x04  // Output report (LEDs from host)
@@ -119,6 +120,37 @@ static const uint8_t hid_report_descriptor[] = {
     0x95, 0x01,        //     Report Count (1)
     0x81, 0x06,        //     Input (Data, Variable, Relative)
     0xC0,              //   End Collection
+    0xC0,              // End Collection
+
+    // ============================================
+    // Consumer Control - Media Keys & Mute
+    // This works with Teams on Windows!
+    // ============================================
+    0x05, 0x0C,        // Usage Page (Consumer)
+    0x09, 0x01,        // Usage (Consumer Control)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, REPORT_ID_CONSUMER, // Report ID (5)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x01,        //   Report Count (1)
+    
+    // Mute - Usage 0xE2
+    0x09, 0xE2,        //   Usage (Mute)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    
+    // Volume Up - Usage 0xE9
+    0x09, 0xE9,        //   Usage (Volume Increment)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    
+    // Volume Down - Usage 0xEA
+    0x09, 0xEA,        //   Usage (Volume Decrement)
+    0x81, 0x06,        //   Input (Data, Variable, Relative)
+    
+    // Padding to byte
+    0x95, 0x05,        //   Report Count (5)
+    0x81, 0x03,        //   Input (Constant)
+    
     0xC0,              // End Collection
 
     // ============================================
@@ -714,7 +746,38 @@ void HIDComposite::mute_telephony() {
 }
 
 void HIDComposite::mute_consumer() {
-  ESP_LOGI(TAG, "Consumer mute removed - using Poly format now");
+  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
+  
+  ESP_LOGI(TAG, "Sending Consumer Mute (works with Teams!)");
+  
+  // Consumer Control report: bit 0 = Mute
+  uint8_t report = 0x01;  // Mute pressed
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+  delay(50);
+  report = 0x00;  // Mute released
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+}
+
+void HIDComposite::volume_up() {
+  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
+  
+  ESP_LOGD(TAG, "Sending Volume Up");
+  uint8_t report = 0x02;  // Volume Up pressed (bit 1)
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+  delay(50);
+  report = 0x00;
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+}
+
+void HIDComposite::volume_down() {
+  if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
+  
+  ESP_LOGD(TAG, "Sending Volume Down");
+  uint8_t report = 0x04;  // Volume Down pressed (bit 2)
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+  delay(50);
+  report = 0x00;
+  tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
 }
 
 void HIDComposite::process_host_report(uint8_t report_id, uint8_t const *buffer, uint16_t bufsize) {
@@ -803,6 +866,10 @@ bool HIDComposite::is_ready() { return false; }
 void HIDComposite::mute() {}
 void HIDComposite::unmute() {}
 void HIDComposite::toggle_mute() {}
+void HIDComposite::mute_telephony() {}
+void HIDComposite::mute_consumer() {}
+void HIDComposite::volume_up() {}
+void HIDComposite::volume_down() {}
 void HIDComposite::hook_switch(bool state) {}
 void HIDComposite::answer_call() {}
 void HIDComposite::hang_up() {}
