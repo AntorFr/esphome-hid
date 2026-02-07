@@ -225,9 +225,20 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) { return hid_repor
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen) { return 0; }
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize) {
-  // Host is sending us LED states (for telephony) - Poly BT700 format uses separate Report IDs
+  // Log ALL reports from host for debugging
+  const char* type_str = (report_type == HID_REPORT_TYPE_OUTPUT) ? "OUTPUT" : 
+                         (report_type == HID_REPORT_TYPE_FEATURE) ? "FEATURE" : "UNKNOWN";
+  
+  // Build hex string of all bytes
+  char hex_buf[64] = {0};
+  for (uint16_t i = 0; i < bufsize && i < 20; i++) {
+    snprintf(hex_buf + i*3, 4, "%02X ", buffer[i]);
+  }
+  
+  ESP_LOGI("HID_RAW", ">>> HOST REPORT: instance=%d, id=0x%02X, type=%s, size=%d, data=[%s]", 
+           instance, report_id, type_str, bufsize, hex_buf);
+  
   if (report_type == HID_REPORT_TYPE_OUTPUT && g_hid_composite_instance != nullptr) {
-    // Pass report_id to process_host_report
     g_hid_composite_instance->process_host_report(report_id, buffer, bufsize);
   }
 }
