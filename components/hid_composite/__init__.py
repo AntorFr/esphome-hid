@@ -47,6 +47,7 @@ UnmuteAction = hid_composite_ns.class_("UnmuteAction", automation.Action)
 ToggleMuteAction = hid_composite_ns.class_("ToggleMuteAction", automation.Action)
 MuteTelephonyAction = hid_composite_ns.class_("MuteTelephonyAction", automation.Action)
 MuteConsumerAction = hid_composite_ns.class_("MuteConsumerAction", automation.Action)
+MuteTeamsAction = hid_composite_ns.class_("MuteTeamsAction", automation.Action)
 HookSwitchAction = hid_composite_ns.class_("HookSwitchAction", automation.Action)
 AnswerCallAction = hid_composite_ns.class_("AnswerCallAction", automation.Action)
 HangUpAction = hid_composite_ns.class_("HangUpAction", automation.Action)
@@ -369,13 +370,24 @@ async def mute_telephony_action_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     return var
 
-# Mute Consumer only (Page 0x0C) - for testing
+# Mute Consumer only (Page 0x0C) - system volume mute
 MUTE_CONSUMER_ACTION_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.use_id(HIDComposite),
 })
 
 @automation.register_action("hid_composite.mute_consumer", MuteConsumerAction, MUTE_CONSUMER_ACTION_SCHEMA)
 async def mute_consumer_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+# Mute Teams - sends Ctrl+Shift+M keyboard shortcut
+MUTE_TEAMS_ACTION_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.use_id(HIDComposite),
+})
+
+@automation.register_action("hid_composite.mute_teams", MuteTeamsAction, MUTE_TEAMS_ACTION_SCHEMA)
+async def mute_teams_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
     return var

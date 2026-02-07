@@ -748,7 +748,7 @@ void HIDComposite::mute_telephony() {
 void HIDComposite::mute_consumer() {
   if (!this->initialized_ || !tud_mounted() || !tud_hid_ready()) return;
   
-  ESP_LOGI(TAG, "Sending Consumer Mute (works with Teams!)");
+  ESP_LOGI(TAG, "Sending Consumer Mute (system volume mute)");
   
   // Consumer Control report: bit 0 = Mute
   uint8_t report = 0x01;  // Mute pressed
@@ -756,6 +756,19 @@ void HIDComposite::mute_consumer() {
   delay(50);
   report = 0x00;  // Mute released
   tud_hid_report(REPORT_ID_CONSUMER, &report, sizeof(report));
+}
+
+void HIDComposite::mute_teams() {
+  // Teams shortcut: Ctrl+Shift+M (Windows) or Cmd+Shift+M (Mac)
+  ESP_LOGI(TAG, "Sending Teams mute shortcut (Ctrl+Shift+M)");
+  
+  // Modifier: Ctrl (0x01) + Shift (0x02) = 0x03
+  uint8_t modifier = 0x03;  // Left Ctrl + Left Shift
+  uint8_t keycode = 0x10;   // 'M' key
+  
+  this->send_keyboard_report(modifier, keycode);
+  delay(50);
+  this->send_keyboard_report(0, 0);  // Release
 }
 
 void HIDComposite::volume_up() {
@@ -868,6 +881,7 @@ void HIDComposite::unmute() {}
 void HIDComposite::toggle_mute() {}
 void HIDComposite::mute_telephony() {}
 void HIDComposite::mute_consumer() {}
+void HIDComposite::mute_teams() {}
 void HIDComposite::volume_up() {}
 void HIDComposite::volume_down() {}
 void HIDComposite::hook_switch(bool state) {}

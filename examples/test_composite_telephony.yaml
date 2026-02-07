@@ -94,6 +94,11 @@ button:
       - hid_composite.mute_consumer:
   
   - platform: template
+    name: "Mute Teams (Ctrl+Shift+M)"
+    on_press:
+      - hid_composite.mute_teams:
+  
+  - platform: template
     name: "Answer Call"
     on_press:
       - hid_composite.answer_call:
